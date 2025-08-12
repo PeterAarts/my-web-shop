@@ -1,0 +1,45 @@
+{
+  "NL": [
+    { "maxWeight": 20,    "price": 1.21,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 50,    "price": 2.42,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 350,   "price": 3.92,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 2000,  "price": 4.25,  "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "2928" },
+    { "maxWeight": 10000, "price": 7.95,  "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "3085" },
+    { "maxWeight": 23000, "price": 14.50, "packageName": "Large Parcel",  "serviceLevel": "Tracked",    "productCode": "3085" }
+  ],
+  "EUR1": [
+    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
+    { "maxWeight": 2000,  "price": 12.00, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
+    { "maxWeight": 2000,  "price": 14.50, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4945" },
+    { "maxWeight": 5000,  "price": 19.50, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" },
+    { "maxWeight": 10000, "price": 25.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" }
+  ],
+  "EUR2": [
+    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
+    { "maxWeight": 2000,  "price": 14.50, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
+    { "maxWeight": 2000,  "price": 20.00, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4945" },
+    { "maxWeight": 5000,  "price": 26.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" },
+    { "maxWeight": 10000, "price": 32.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" }
+  ],
+  "ROW": [
+    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
+    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
+    { "maxWeight": 2000,  "price": 12.00, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
+    { "maxWeight": 2000,  "price": 19.00, "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
+    { "maxWeight": 2000,  "price": 29.50, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3530" },
+    { "maxWeight": 2000,  "price": 31.00, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4950" },
+    { "maxWeight": 5000,  "price": 38.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4950" },
+    { "maxWeight": 10000, "price": 62.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4950" }
+  ]
+}
