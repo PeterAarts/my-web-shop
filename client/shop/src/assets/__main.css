@@ -1,0 +1,36 @@
+@import './base.css';
+
+#app {
+  max-width: 100%;
+  margin: 0 auto;
+  font-weight: normal;
+   background-color: rgb(157, 157, 204);
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+}
+
+
+@media (min-width: 1024px) {
+  body {
+    display: flex;
+    place-items: center;
+    background-color: #efefef; /* This is a light lavender color */
+  }
+
+  #app {
+    width:100%;
+    background-color: #D3D3FF;
+     }
+  header{ max-height:100px;}
+}
+/* Custom styles for the ticket's perforated edges */
+.ticket {font-family: 'Roboto Mono', monospace;position: relative;background-color: white;color: #333;z-index:200!important;}
+.ticket::before,
+.ticket::after {content: '';position: absolute;left: 0;right: 0;height: 20px;background-size: 30px 20px;background-size: 30px 20px; }
+.ticket::before {top: -1px;background-image: radial-gradient(circle at 15px 0, transparent, transparent 10px, white 10px);}
+.ticket::after {bottom: -1px;background-image: radial-gradient(circle at 15px 20px, transparent, transparent 10px, white 10px);}

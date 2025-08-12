@@ -1,0 +1,169 @@
+// File: src/assets/scss/main.scss
+// This is the single source of truth for your shop's application's styling.
+
+// 1. Include functions first to enable color manipulation
+@import "bootstrap/scss/functions";
+
+// 2. DEFINE YOUR THEME
+// =============================================================================
+
+// a. Define STATIC FALLBACK colors for Sass compilation.
+// These are used by Bootstrap's internal functions during the build process.
+$primary: #9D9DCC;
+$secondary: #989899;
+$success: #28a745;
+$info: #17a2b8;
+$warning: #ffc107;
+$danger: #dc3545;
+$light: #f8f9fa;
+$dark: #343a40;
+
+// b. Define variables for the LIGHT theme.
+// Note: We use a CSS variable for the background to allow dynamic changes.
+$body-bg-light: #D3D3E2; 
+$body-color-light: #212529;
+$card-bg-light: #ffffff;
+
+// c. Define variables for the DARK theme.
+$body-bg-dark: #1a1a1a;
+$body-color-dark: #f8f9fa;
+$card-bg-dark: #2c2c2c;
+
+// d. Map the colors for Bootstrap's light theme using the STATICs.
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger,
+  "light": $light,
+  "dark": $dark
+);
+
+// e. Map the colors for Bootstrap's dark theme.
+// We can now safely use lighten() because it operates on a real color.
+$theme-colors-dark: (
+  "primary": lighten($primary, 15%),
+  "secondary": lighten($secondary, 15%),
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger,
+  "light": $light,
+  "dark": $dark
+);
+
+// f. Override Bootstrap's core variables for the default (light) theme.
+$body-bg: $body-bg-light;
+$body-color: $body-color-light;
+$card-bg: $card-bg-light;
+$table-bg: $card-bg-light;
+$modal-content-bg: $card-bg-light;
+$list-group-bg: $card-bg-light;
+// Bootstrap automatically uses the '-dark' suffixed variables for the dark theme.
+
+
+// 3. IMPORT BOOTSTRAP
+// =============================================================================
+// This imports all of Bootstrap, which will now compile without errors.
+@import "bootstrap/scss/bootstrap";
+
+
+// 4. YOUR GLOBAL CUSTOM STYLES
+// =============================================================================
+// This section replaces base.css and main.css.
+
+// a. Import custom fonts
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+// b. Define global body styles
+// DO NOT set background-color or color here. Let Bootstrap's theme engine handle it.
+body {
+  //font-family: 'Montserrat', system-ui, sans-serif;
+  font-family:  'Roboto',system-ui, sans-serif;
+  
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// c. Custom link styles
+a {
+  text-decoration: none;
+  transition: color 0.3s ease-in-out;
+  color: var(--bs-primary); // Use Bootstrap's CSS variable for links
+}
+
+a:hover {
+  // Use darken() on the static fallback for a consistent hover effect
+  color: darken($primary, 10%);
+}
+  .card,.modal-content,.accordion-body,.dropdown-menu,
+  .accordion-button,.form-check-input,.offcanvas,.form-control,.form-select {
+    background-color:$card-bg;
+  }
+  .accordion-button{
+    border-radius :5px;
+    margin-bottom: 3px;
+   }
+   label {font-size :90%;}
+  .accordion {--bs-accordion-border-color:transparent!important;}
+  .accordion-body {margin-bottom:3px;margin-top:2px;border-radius :5px;}
+// d. Custom navigation styles for the shop
+.nav-link {
+  color: #fff !important;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid transparent;
+  margin:0 0.25rem;
+ 
+}
+
+.nav-link.active {
+  background-color: transparent !important;
+  color: var(--bs-primary) !important;
+  border-radius: var(--bs-btn-border-radius);
+}
+
+.nav-link:hover {
+  color: var(#fff) !important;
+  background-color: rgba(var(--bs-secondary-rgb), 0.6) !important;
+  border-radius:var(--bs-btn-border-radius);
+}
+
+.btn-outline-primary {
+  background-color: transparent !important;
+  color: var(--bs-primary) !important;
+  border-bottom: 2px solid var(--bs-primary);
+}
+/* Custom styles for the ticket's perforated edges */
+.ticket           {font-family: 'Roboto Mono', monospace;position: relative;background-color: $card-bg;color: #333;z-index:200!important;}
+.ticket::before,
+.ticket::after    {content: '';position: absolute;left: 0;right: 0;height: 20px;background-size: 30px 20px;background-size: 30px 20px; }
+.ticket::before   {top: -1px;background-image: radial-gradient(circle at 15px 0, transparent, transparent 10px, white 10px);}
+.ticket::after    {bottom: -1px;background-image: radial-gradient(circle at 15px 20px, transparent, transparent 10px, white 10px);}
+.accordion-button:not(.collapsed) {
+    border: 2px solid var(--bs-primary);
+}
+
+// e. Explicit dark mode overrides for component backgrounds
+// This ensures components that don't use CSS variables for backgrounds get the correct color.
+[data-bs-theme="dark"] {
+  .card,
+  .modal-content,
+  .offcanvas {
+    background-color: $card-bg-dark;
+  }
+
+  .table {
+    --bs-table-bg: #{$card-bg-dark};
+    --bs-table-color: #{$body-color-dark};
+  }
+
+  .list-group {
+    --bs-list-group-bg: #{$card-bg-dark};
+    --bs-list-group-color: #{$body-color-dark};
+  }
+}
