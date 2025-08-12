@@ -1,0 +1,27 @@
+// File: src/utils/eventBus.js
+import { ref } from 'vue';
+
+const bus = ref(new Map());
+
+export default {
+  on(event, callback) {
+    if (!bus.value.has(event)) {
+      bus.value.set(event, []);
+    }
+    bus.value.get(event).push(callback);
+  },
+  emit(event, data = null) {
+    if (bus.value.has(event)) {
+      bus.value.get(event).forEach(callback => callback(data));
+    }
+  },
+  off(event, callback) {
+    if (bus.value.has(event)) {
+      const callbacks = bus.value.get(event);
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+};

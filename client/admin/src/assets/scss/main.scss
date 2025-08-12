@@ -1,0 +1,156 @@
+// File: src/assets/scss/main.scss
+// This is the single source of truth for your application's styling.
+
+// 1. Include functions first to enable color manipulation
+@import "bootstrap/scss/functions";
+
+// 2. DEFINE YOUR THEME
+// =============================================================================
+
+// a. Define custom colors
+$primary: #8685ef;
+$secondary: #909497;
+$success: #198754;
+$info: #0dcaf0;
+$warning: #ffc107;
+$danger: #dc3545;
+
+// b. Define variables for the LIGHT theme
+$body-bg-light: rgb(211, 211, 226); // Your custom light purple/gray background
+$body-color-light: #020202;
+$card-bg-light: #ffffff; // Ensure cards are white in light mode
+
+// c. Define variables for the DARK theme
+$body-bg-dark: #202124; // A standard dark background
+$body-color-dark: #e8e6e3; // A softer white for text
+$card-bg-dark: #2d2e30;   // A slightly lighter background for cards in dark mode
+$table-bg-dark: $card-bg-dark; 
+$list-group-bg-dark: $card-bg-dark;
+
+// d. Map the colors for Bootstrap's light theme
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger
+);
+
+// e. Map the colors for Bootstrap's dark theme
+$theme-colors-dark: (
+  "primary": lighten($primary, 10%), // Make primary a bit lighter in dark mode
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger
+);
+
+// f. Override Bootstrap's core variables for the default (light) theme
+$body-bg: $body-bg-light;
+$body-color: $body-color-light;
+$card-bg: $card-bg-light;
+$table-bg: $card-bg-light;
+$modal-content-bg: $card-bg-light; // Ensure modals have the same background as cards
+$list-group-bg: $card-bg-light;
+// Bootstrap automatically uses the '-dark' suffixed variables for the dark theme.
+
+
+// 3. IMPORT BOOTSTRAP
+// =============================================================================
+// This imports all of Bootstrap, which will now use your variables from above.
+@import "bootstrap/scss/bootstrap";
+
+
+// 4. YOUR GLOBAL CUSTOM STYLES
+// =============================================================================
+// This section replaces base.css and main.css
+
+// a. Import custom fonts
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+// b. Define global body styles
+// DO NOT set background-color or color here. Let Bootstrap's theme engine handle it.
+body {
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// c. Custom link styles
+a {
+  text-decoration: none;
+  transition: 0.4s;
+  color: var(--bs-primary); // Use the primary color for links
+}
+
+a:hover {
+  color: darken($primary, 10%); // FIX: Use the Sass variable $primary here
+}
+
+// Ensure router links don't get a background on hover when active
+a.router-link-active:hover {
+  background-color: transparent;
+}
+
+// d. Global fix for modal text color in light/dark themes
+.modal-body .form-label,
+.modal-body .form-text {
+  color: var(--bs-body-color);
+}
+.nav-link {
+  color: inherit !important;
+
+}
+.nav-link.active {
+  background-color: $secondary!important;
+  color:$card-bg-light!important;
+  border:0;
+}
+.nav-link:hover {
+  background-color: $primary;
+  color:$card-bg-light;
+}
+
+// e. Explicit dark mode overrides
+// This ensures components have the correct background in dark mode.
+[data-bs-theme="dark"] {
+  .card {
+    background-color: $card-bg-dark;
+  }
+  
+  .table {
+    // This targets the table's CSS variables directly for a robust override
+    --bs-table-bg: #{$card-bg-dark};
+    --bs-table-color: #{$body-color-dark};
+    --bs-table-border-color: var(--bs-border-color-translucent);
+  }
+    .list-group {
+    // FIX: Add explicit override for list-group in dark mode
+    --bs-list-group-bg: #{$card-bg-dark};
+    --bs-list-group-color: #{$body-color-dark};
+    --bs-list-group-border-color: var(--bs-border-color-translucent);
+  }
+  .modal-content {
+    background-color: $card-bg-dark; 
+  
+  }
+}
+  .card,
+  .modal-content,
+  .accordion-body,
+  .accordion,
+  .accordion-button,
+  .form-check-input,
+  .form-control,
+  .offcanvas {
+    background-color:$card-bg;
+  }
+  @media (min-width: 992px) {
+    .modal-lg, .modal-xl {
+        --bs-modal-width: 1200px;
+    }
+}
