@@ -7,7 +7,7 @@ Welcome to your new webshop! This guide will walk you through the essential day-
 Your Admin Panel is your command center. You can access it by navigating to [admin.YourDomain.com] and logging in with the credentials provided.
 
 The first page you will see is the Dashboard. It gives you a high-level overview of your business at a glance, including:
-
+![Alt text]([https://assets.digitalocean.com/articles/alligator/boo.svg](https://github.com/PeterAarts/my-web-shop/blob/main/documentation/pictures/Admin_dashboard.png) "the dashboard")
 - **Key Statistics**: Total products, registered users, and recent sales figures.
 - **Sales Activity Chart**: A visual graph of your sales and orders over the last 30 days.
 - **Recent Orders**: A list of the most recent orders that have come in, allowing you to quickly see new activity.
