@@ -105,7 +105,7 @@ The Settings section is the control panel for your shop's business rules. Here y
 ## 7. Managing Email Notifications
 
 Your shop sends automatic emails to customers at key moments. In the E-mail templates section, you can view and edit the content of these emails.
-
+![image of the email templates](https://github.com/PeterAarts/my-web-shop/blob/main/documentation/pictures/Admin_emailTemplates.png "the dashboard")
 - You can change the Subject and Body (HTML) of templates like "Order Confirmation" and "Order Shipped".
 - The templates use variables (e.g., `<%= order.orderNumber %>`) to automatically insert the correct customer and order details.
 
