@@ -30,16 +30,16 @@ const shippingDetailsSchema = new Schema({
 }, { _id: false });  
 
 const orderSchema = new Schema({
-  user:         {type: mongoose.Schema.Types.ObjectId,required: false,ref: 'User'},
-  orderNumber:  {type: String,required: true,unique: true},
-  customerDetails: {
+  user:               {type: mongoose.Schema.Types.ObjectId,required: false,ref: 'User'},
+  orderNumber:        {type: String,required: true,unique: true},
+  customerDetails:    {
     name:       {type: String, required: true },
     email:      {type: String, required: true },
     address:    {type: String, required: true }
   },
-  items: [orderItemSchema],
-  totalAmount:  {type: Number,required: true},
-  status:       {type: String,required: true,
+  items:               [orderItemSchema],
+  totalAmount:         {type: Number,required: true},
+  status:              {type: String,required: true,
     enum: [
       'created', 
       'received', 
@@ -51,8 +51,8 @@ const orderSchema = new Schema({
     ],
     default: 'created'
   },
-  paymentDetails: {type: paymentDetailsSchema,default: () => ({})},
-  shippingDetails: {type: shippingDetailsSchema,default: () => ({})},
+  paymentDetails:       {type: paymentDetailsSchema,default: () => ({})},
+  shippingDetails:      {type: shippingDetailsSchema,default: () => ({})},
   reservationExpiresAt: {type: Date},
   shippingCost:         {type: String},
   viewToken:            {type: String },
@@ -63,4 +63,5 @@ const orderSchema = new Schema({
 });
 
 const Order = mongoose.model('Order', orderSchema);
+
 module.exports = Order;
