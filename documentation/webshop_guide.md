@@ -22,9 +22,11 @@ The Products section is where you will spend a lot of your time, adding and mana
 - Click the "Add New Product" button.
 - Fill in the product details:
   - **Name & Description**: The title and detailed description for your product.
+  - **sku**: Depending on a general settings you manually or automatically create a sku.
   - **Price**: The selling price.
   - **Images**: Upload one or more high-quality images. The first image is typically the main one.
   - **Stock Quantity**: The number of items you have available. The shop will automatically track this.
+  - **Restrict Stock**: restrict the amount of products can be selected in an order.
   - **Category**: Assign the product to a category to help customers find it.
   - **Weight & Dimensions**: These are crucial for calculating shipping rates accurately.
 - Click "Save Product". It will now be live in your shop.
@@ -60,6 +62,7 @@ The Stories section is your built-in blog. You can use it for announcements, art
 - Fill in the Title and the main Body content. You can add images to make it more engaging.
 - The system will automatically create a URL-friendly "slug" from the title. This slug determines the story's web address (e.g., a story titled "My First Post" will have a URL like [YourDomain.com]/stories/my-first-post).
 - When you publish the story, it will appear on the "Stories" or "Blog" section of your main shop website.
+- There 4 main locations to publish a story, frontpage, productpage, checkout-page and the aboutpage.
 
 ## 5. Processing Customer Orders (The Core Workflow)
 
@@ -72,6 +75,7 @@ New orders will appear at the top of the list in the Orders section of the admin
 ### Step 2: Review and Prepare the Order
 
 Click on an order to view its details, including the items purchased and the customer's shipping address. At this stage, you should physically pick the items and pack them for shipment.
+A pickinglist is automatically created when status received is set to the order.
 
 ### Step 3: Create the Shipping Label
 
