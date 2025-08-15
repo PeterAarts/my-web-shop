@@ -68,12 +68,12 @@ $list-group-bg: $card-bg-light;
 // This section replaces base.css and main.css
 
 // a. Import custom fonts
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&display=swap');
 
 // b. Define global body styles
 // DO NOT set background-color or color here. Let Bootstrap's theme engine handle it.
 body {
-  font-family: 'Roboto', system-ui, sans-serif;
+  font-family: 'Noto Sans', system-ui, sans-serif;
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

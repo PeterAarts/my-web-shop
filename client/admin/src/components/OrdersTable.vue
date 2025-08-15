@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
@@ -26,8 +25,9 @@
             <th>Total</th>
             <th>Payment</th>
             <th>Status</th>
-            <th class="text-center">Actions</th>
-            <th></th>
+            <th width="1%" class="text-center">Shipment</th>
+            <th width="1%" class="text-center">Picking</th>
+            <th width="5%"></th>
           </tr>
         </thead>
         <tbody>
@@ -45,28 +45,33 @@
             <td class="text-center">
               <button
                 v-if="['received', 'processing'].includes(order.status)"
-                class="btn btn-sm btn-primary"
+                class="btn p-0 fs-5 "
                 @click.stop="$emit('create-label', order)"
-                title="Create Shipping Label"
-              >
-                <i class="ph ph-tag"></i>
+                title="Create Shipping Label">
+                <i class="ph ph-barcode"></i>
               </button>
-              <a
-                v-if="order.shippingDetails && order.shippingDetails.labelUrl"
+              <a v-if="order.shippingDetails && order.shippingDetails.labelUrl"
                 :href="order.shippingDetails.labelUrl"
                 target="_blank"
-                class="btn btn-sm btn-success"
-                title="View Shipping Label"
-              >
+                class="btn "
+                title="View Shipping Label">
                 <i class="ph ph-printer"></i>
               </a>
             </td>
             <td class="text-center">
-              <button v-if="['received', 'processing', 'ready for shipment'].includes(order.status)"
-                class="btn btn-sm btn-outline-secondary"
+              <!-- Show DOWNLOAD icon if picklist exists -->
+              <button v-if="order.picklistFilename"
+                class="btn p-0 fs-5 "
                 title="Download Pick List"
                 @click.stop="$emit('download-picklist', order)">
-                <i class="ph ph-pdf"></i>
+                <i class="ph ph-file-pdf"></i>
+              </button>
+              <!-- Show GENERATE icon if picklist is MISSING but should exist -->
+              <button v-else-if="['received', 'processing', 'ready for shipment', 'shipped'].includes(order.status)"
+                class="btn p-0 fs-5 text-warning"
+                title="Generate Pick List"
+                @click.stop="$emit('generate-picklist', order)">
+                <i class="ph-duotone ph-file-plus"></i>
               </button>
             </td>
             <td class="text-end">
@@ -82,7 +87,7 @@
         <label for="itemsPerPage" class="form-label me-2 small">Items per page:</label>
         <select v-model.number="itemsPerPage" id="itemsPerPage" class="form-select form-select-sm d-inline-block" style="width: auto;">
           <option value="5">5</option>
-          <option value="10">10</option>
+          <option value="10" selected>10</option>
           <option value="15">15</option>
           <option value="25">25</option>
           <option value="50">50</option>
@@ -115,12 +120,12 @@ const props = defineProps({
   defaultItemsPerPage: { type: Number, default: 5 }
 });
 
-// MODIFIED: Added 'create-label' to the list of emitted events
 const emit = defineEmits([
     'edit-order', 
     'selection-changed', 
     'create-label', 
-    'download-picklist' // Add this new event
+    'download-picklist',
+    'generate-picklist' // NEW: Add the new event
 ]);
 
 const searchTerm = ref('');
@@ -178,7 +183,7 @@ const getStatusClass = (status) => {
 };
 
 const getPaymentStatusClass = (status) => {
-  const map = { paid: 'bg-success', COMPLETED: 'bg-success', pending: 'bg-warning text-dark', failed: 'bg-danger' };
-  return map[status?.toLowerCase()] || 'bg-light text-dark';
+  const map = { paid: 'bg-success', COMPLETED: 'bg-success', pending: 'bg-warning text-dark', failed: 'text-danger' };
+  return map[status] || 'bg-light text-dark';
 };
 </script>

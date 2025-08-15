@@ -32,7 +32,10 @@ const apiClient = async (endpoint, options = {}) => {
       delete config.headers['Content-Type'];
     } 
     // Case 2: The body is a plain JavaScript object that needs to be stringified.
-    else if (typeof config.body === 'object' && config.body.constructor === Object) {
+  //  else if (typeof config.body === 'object' && config.body.constructor === Object) {
+  //    config.body = JSON.stringify(config.body);
+ //   }
+     else if (config.body && typeof config.body === 'object') {
       config.body = JSON.stringify(config.body);
     }
     // Case 3: The body is already a string (pre-stringified JSON). Do nothing.

@@ -15,11 +15,10 @@
 </template>
 
 <script setup>
-// Import the reactive state and the remove function directly
-import { notifications, useNotifier } from '@/composables/useNotifier';
+import { useNotifier } from '@/composables/useNotifier';
+const { notifications, removeNotification } = useNotifier();
 
-// We still use the hook here to get the remove function
-const { removeNotification } = useNotifier();
+// This helper function is fine, but you can also call removeNotification directly from the template
 const removeNotificationById = (id) => removeNotification(id);
 </script>
 
