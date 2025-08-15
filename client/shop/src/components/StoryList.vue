@@ -43,15 +43,16 @@
             <template v-if="selectedStory.image">
               <div class="row g-0">
                 <div class="col-md-4 bg-light p-4">
+                    <div class="flex justify-content-between align-items-start mb-3">
+                      <h3 class="mt-0 mb-0">{{ selectedStory.title }}</h3>
+                      <div class="text-muted small text-nowrap"><i class="ph-fill ph-calendar"></i> {{ formatDate(selectedStory.startDate) }}</div>
+                    </div>
+                    <hr>                  
                   <img :src="getStoryImageUrl(selectedStory.image.path)" @error="onImageError(selectedStory)" class="modal-story-image rounded" :alt="selectedStory.image.text">
                 </div>
                 <div class="col-md-8 position-relative">
                   <button type="button" class="btn-close position-absolute top-0 end-0 m-3 p-3" style="z-index: 10;" data-bs-dismiss="modal" aria-label="Close"></button>
-                  <div class="story-content-scroll p-4">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                      <h3 class="mt-0 mb-0">{{ selectedStory.title }}</h3>
-                      <span class="text-muted small ms-3 text-nowrap">{{ formatDate(selectedStory.startDate) }}</span>
-                    </div>
+                  <div class="story-content-scroll p-4 mt-5">
                     <div v-html="selectedStory.content"></div>
                   </div>
                 </div>

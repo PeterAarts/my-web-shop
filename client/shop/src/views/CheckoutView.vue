@@ -59,18 +59,18 @@
                 </button>
               </h2>
               <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#checkoutAccordion">
-                 <div class="accordion-body">
-                   <p v-if="loadingShipping" class="text-muted">Loading shipping options...</p>
+                <div class="accordion-body">
+                  <p v-if="loadingShipping" class="text-muted">Loading shipping options...</p>
                   <div v-else-if="shippingError" class="alert alert-danger">{{ shippingError }}</div>
-                  <div v-else-if="shippingOptions.length > 0">
-                    <p v-if="totalWeight > 0" class="text-muted mb-3">Total shipping weight: <strong>{{ totalWeight }}g</strong></p>
+                  <div v-else-if="!loadingRates && shippingOptions.length > 0">
+                  <p v-if="totalWeight > 0" class="text-muted mb-3">Total shipping weight: <strong>{{ totalWeight }}g</strong></p>
                     <div v-for="option in shippingOptions" :key="option.id" class="form-check ms-4 my-2">
                       <input class="form-check-input" type="radio" name="shippingOption" :id="`shipping-${option.id}`" :value="option" v-model="selectedShipping">
                       <label class="form-check-label w-100" :for="`shipping-${option.id}`">{{ option.name }}<span class="float-end fw-bold">€{{ option.price.toFixed(2) }}</span></label>
                     </div>
                     <button @click="handleShippingSubmit" class="btn btn-primary mt-4" :disabled="!selectedShipping">Continue to Payment</button>
                   </div>
-                   <p v-else class="text-muted">No shipping options available for this address.</p>
+                  <p v-else class="alert alert-danger">Sorry, No shipping options available, please contact us via Instagram.</p>
                 </div>
               </div>
             </div>
@@ -187,6 +187,7 @@ const paymentError = ref('');
 // 1. Declare the reactive variable for stories
 const checkoutPageStories = ref([]);
 
+
 // (All computed properties and other functions remain the same)
 const shippingCountryName = computed(() => {
   if (!shippingAddress.value.countryCode) return '';
@@ -218,6 +219,13 @@ const handleAddressSubmit = async () => {
     if (collapseOneEl && collapseTwoEl) {
         bootstrap.Collapse.getOrCreateInstance(collapseOneEl).hide();
         bootstrap.Collapse.getOrCreateInstance(collapseTwoEl).show();
+    }
+    // The API now successfully returns a `rates` array, even if it's empty.
+    if (response.rates && response.rates.length > 0) {
+      shippingRates.value = response.rates;
+    } else {
+      // Handle the case where the array is empty (e.g., zero-weight order)
+      console.warn("No shipping rates were returned by the API.");
     }
   } catch (error) {
     shippingError.value = error.message;
