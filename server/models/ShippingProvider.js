@@ -2,36 +2,31 @@
 
 const mongoose = require('mongoose');
 
-const ShippingProviderSchema = new mongoose.Schema({
-  name: { // The user-friendly name, e.g., "PostNL"
-    type: String,
-    required: true,
-  },
-  moduleName: { // The unique key linking to the file, e.g., "postnl"
-    type: String,
-    unique: true,
-    lowercase: true,
-    default: 'new-provider',
-  },
-  isEnabled: { // The admin can toggle this provider on/off
-    type: Boolean,
-    default: false,
-  },
-  usesApiForRates: { // True if rates are fetched live, false if using the 'rates' table
-    type: Boolean,
-    default: false,
-  },
-  apiUrl: { // URL for label generation or live rate fetching
-    type: String,
-    default: '',
-  },
+// NEW: A sub-schema for a single environment's configuration
+const EnvironmentSchema = new mongoose.Schema({
+  name: { type: String, required: true, enum: ['production', 'sandbox'], default: 'production' },
+  apiUrl: { type: String, default: '' },
   credentials: {
-    apiKey: { type: String, default: '' },
-    apiSecret: { type: String, default: '' },
-    customerCode: { type: String, default: '' },
-    customerNumber: { type: String, default: '' },
+    apiKey:             { type: String, default: '' },
+    apiSecret:          { type: String, default: '' },
+    customerCode:       { type: String, default: '' },
+    customerNumber:     { type: String, default: '' },
     collectionLocation: { type: String, default: '' },
-  },
+  }
+}, { _id: false });
+
+
+const ShippingProviderSchema = new mongoose.Schema({
+  name:           { type: String, required: true  },
+  description:    { type: String, default: '' },
+  logoUrl:        { type: String, default: '' },
+  moduleName:     { type: String, unique: true, lowercase: true, default: 'new-provider' },
+  isEnabled:      { type: Boolean, default: true },
+  usesApiForRates:{ type: Boolean, default: false },
+  
+  activeEnvironment: { type: String, enum: ['production', 'sandbox'], default: 'production' },
+  environments: { type: [EnvironmentSchema], default: () => ([{ name: 'production' }, { name: 'sandbox' }]) },
+  version: { type: String, default: '1.0.0' },
   rateCard: { 
     type: Object,  
     default: {
@@ -43,11 +38,7 @@ const ShippingProviderSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// ADDED: Mongoose pre-save hook for new documents.
-// This is a more robust way to ensure default objects are created.
 ShippingProviderSchema.pre('save', function(next) {
-  // If this is a new document and the 'rates' field has not been set,
-  // initialize it as an empty object before saving.
   if (this.isNew && !this.rates) {
     this.rates = {};
   }

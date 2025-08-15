@@ -180,18 +180,8 @@ async function placeFinalOrder(orderDetails, userId, paymentDetails) {
       customerDetails: orderDetails.customerDetails,
       items: orderDetails.items,
       totalAmount: orderDetails.totalAmount,
-      shippingCost: orderDetails.shippingDetails.shippingCost,
-      
-      // NEW: Storing the detailed shipping info, including the ID
-      shippingDetails: {
-        shippingMethodId: orderDetails.shippingDetails.shippingMethodId,
-        shippingMethodName: orderDetails.shippingDetails.shippingMethodName,
-        shippingMethodCost: orderDetails.shippingDetails.shippingCost
-      },
-      
-      // NEW: Storing the payment details in a single object as per the new model
+      shippingDetails: orderDetails.shippingDetails,
       paymentDetails: paymentDetails,
-
       status: 'received' // Default status for a confirmed order
     };
     if (paymentDetails.paymentStatus === 'pending') {

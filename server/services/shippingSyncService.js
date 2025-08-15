@@ -1,79 +1,81 @@
-// FILE: server/services/shippingSyncService.js (MODIFIED)
-// This service scans for local provider files and syncs them with the database.
+// FILE: server/services/shippingSyncService.js
 
 const fs = require('fs');
 const path = require('path');
+const semver = require('semver'); // NEW: Import the version comparison library
 const ShippingProvider = require('../models/ShippingProvider');
 
 const providersDirectory = path.join(__dirname, '../shipping-providers');
 
 const syncShippingProviders = async () => {
-  console.log('--- SHIPPING PROVIDER SYNC SERVICE ---');
+  console.log('--- SHIPPING PROVIDER SYNC SERVICE (v2) ---');
   
   try {
-    // 1. Scan for local provider files
+    // 1. Scan local provider files for their full configuration
     const localProviders = [];
     if (!fs.existsSync(providersDirectory)) {
-        console.log(` - [SYNC] Directory not found: ${providersDirectory}. Skipping.`);
+        console.log(`[SYNC] Directory not found: ${providersDirectory}. Skipping.`);
         return;
     }
     const files = fs.readdirSync(providersDirectory);
-    console.log(` - [SYNC] Found ${files.length} files in provider directory: [${files.join(', ')}]`);
 
     for (const file of files) {
       if (file.endsWith('.js')) {
         try {
-            const providerModule = require(path.join(providersDirectory, file));
-            
-            // Check for the required properties in the provider file
-            if (providerModule && providerModule.key && providerModule.name) {
-              console.log(` - [SYNC]   ✔️ Valid provider found in ${file}: Key='${providerModule.key}'`);
-              localProviders.push({
-                  moduleName: providerModule.key,
-                  name: providerModule.name,
-                  // Read the default rate-fetching method from the provider file
-                  usesApiForRates: providerModule.usesApiForRates || false, 
-              });
-            } else {
-              console.log(` - [SYNC]   ⚠️  Skipping ${file}: Does not export 'key' and 'name'.`);
-            }
-        } catch (e) { console.log(` - [SYNC]   ❌ Error loading ${file}: ${e.message}`); }
+          const providerModule = require(path.join(providersDirectory, file));
+          // Ensure the module exports all necessary parts for the sync to work
+          if (providerModule && providerModule.key && providerModule.name && providerModule.version && providerModule.defaultConfig) {
+            localProviders.push(providerModule);
+          }
+        } catch (e) { console.log(`[SYNC] Error loading ${file}: ${e.message}`); }
       }
     }
 
-    // 2. Compare with database
+    // 2. Get all providers from the database to compare against
     const dbProviders = await ShippingProvider.find({});
-    const dbModuleNames = dbProviders.map(p => p.moduleName);
-    console.log(` - [SYNC] Found ${dbProviders.length} providers in database: [${dbModuleNames.join(', ')}]`);
+    const dbProviderMap = new Map(dbProviders.map(p => [p.moduleName, p]));
 
-    const newProviders = localProviders.filter(p => !dbModuleNames.includes(p.moduleName));
+    // 3. Iterate through each local provider file and decide whether to create or update
+    for (const local of localProviders) {
+      const dbProvider = dbProviderMap.get(local.key);
 
-    if (newProviders.length > 0) {
-      console.log(` - [SYNC] ➕ Found ${newProviders.length} new provider(s) to register: [${newProviders.map(p => p.name).join(', ')}]`);
-      
-      // CORRECTED: This object now includes all necessary fields to match the model,
-      // preventing validation errors.
-      const providersToCreate = newProviders.map(p => ({
-        name: p.name,
-        moduleName: p.moduleName,
-        usesApiForRates: p.usesApiForRates,
-        isEnabled: false
-      }));
+      if (!dbProvider) {
+        // --- Case 1: New Provider Found ---
+        console.log(`[SYNC] ➕ Registering new provider: ${local.name} (v${local.version})`);
+        const newProviderData = {
+          moduleName: local.key,
+          name: local.name,
+          version: local.version,
+          ...local.defaultConfig
+        };
+        await ShippingProvider.create(newProviderData);
 
-      console.log(' - [SYNC] 📝 Attempting to insert these documents:');
-      console.log(JSON.stringify(providersToCreate, null, 2));
+      } else if (semver.gt(local.version, dbProvider.version)) {
+        // --- Case 2: Newer Version Found in File ---
+        console.log(`[SYNC] ⬆️ Updating provider ${local.name} from v${dbProvider.version} to v${local.version}`);
+        
+        // This is a "smart update". It overwrites defaults but preserves user settings.
+        const updatedConfig = {
+          ...local.defaultConfig, // Start with the new defaults from the file
+          isEnabled: dbProvider.isEnabled, // Keep the user's enabled/disabled choice
+          activeEnvironment: dbProvider.activeEnvironment, // Keep the user's active env choice
+          version: local.version // Set the new version number
+        };
+        
+        // Carefully merge credentials so users don't have to re-enter their API keys.
+        updatedConfig.environments.forEach(newEnv => {
+          const oldEnv = dbProvider.environments.find(e => e.name === newEnv.name);
+          if (oldEnv) {
+            // If an environment with the same name existed, keep its credentials
+            newEnv.credentials = oldEnv.credentials;
+          }
+        });
 
-      try {
-        await ShippingProvider.insertMany(providersToCreate);
-        console.log(' - [SYNC] ✅ New provider(s) registered successfully.');
-      } catch (dbError) {
-        console.error('- [SYNC] ❌ DATABASE ERROR during insertMany:', dbError);
+        await ShippingProvider.updateOne({ _id: dbProvider._id }, updatedConfig);
       }
-
-    } else {
-      console.log(' - [SYNC] 👍 Database is already in sync with local provider files.');
     }
-    console.log('--- SYNC SERVICE COMPLETE ---');
+    
+    console.log('[SYNC] 👍 Sync service complete.');
 
   } catch (error) {
     console.error('❌ FATAL ERROR during shipping provider sync:', error);

@@ -9,9 +9,6 @@ const Product = require('../models/Product');
 const OrderStatusLog = require('../models/OrderStatusLog');
 const { changeOrderStatus } = require('../services/orderStatusService');
 const PDFDocument = require('pdfkit');
-const { generateAndSavePickList } = require('../services/pickListService');
-const path = require('path');
-const fs = require('fs');
 const {
   sendOrderConfirmationEmail,
   sendPendingPaymentEmail,
@@ -173,10 +170,10 @@ router.post('/', auth, async (req, res) => {
     const newOrderData = new Order({
       orderNumber: `ORD-${Date.now()}`,
       user: req.user.id,
-      shippingDetails: {
+        shippingDetails: {
         shippingMethodId: selectedShipping.id, // Make sure you pass this from the frontend
         shippingMethodName: selectedShipping.name,
-        shippingCost: selectedShipping.price
+        shippingMethodCost: selectedShipping.price
       },
       paymentHistory: [{
         paymentMethod: paymentMethodModuleName, // e.g., 'banktransfer' or 'paypal'
@@ -240,9 +237,6 @@ router.post('/archive', auth, async (req, res) => {
     }
 });
 
-// @route   PUT api/orders/:id
-// @desc    Update an order's details and/or status securely
-// @access  Private
 router.put('/:id', auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -251,49 +245,60 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     const originalStatus = order.status;
-    const newStatus = req.body.status;
+    order.set(req.body);
 
-    // --- NEW SECURE LOGIC ---
-    // Check if the status is being changed in the request.
-    if (newStatus && newStatus !== originalStatus) {
-      
-      // A status change is requested. Use the secure service.
-      // The service handles validation, side effects (stock, emails), and logging.
-      await changeOrderStatus(
-        req.params.id,
-        newStatus,
-        req.user.id,
-        req.body.comment // Pass along any comment
-      );
-
-    } 
-    
-    // --- GENERAL UPDATE LOGIC ---
-    // Update any other fields that were sent in the request body.
-    // We create a copy of the request body and delete the status
-    // property to avoid conflicts with the service.
-    const otherUpdates = { ...req.body };
-    delete otherUpdates.status;
-    delete otherUpdates.comment;
-
-    // Apply the remaining updates if there are any
-    if (Object.keys(otherUpdates).length > 0) {
-        order.set(otherUpdates);
+    if (req.body.paymentDetails && req.body.paymentDetails.paymentStatus === 'rejected') {
+      order.status = 'cancelled';
     }
-    
-    // Save all changes and get the final, updated document.
+    const newStatus = order.status;
+    // --- Side-Effect Logic ---
+    if (newStatus !== originalStatus) {
+      const unfulfilledStatuses = ['created', 'received', 'pending payment'];
+      // Decrement stock
+      if (unfulfilledStatuses.includes(originalStatus) && (newStatus === 'processing' || newStatus === 'shipped')) {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, { $inc: { stockQuantity: -item.quantity } });
+        }
+      }
+      // Restore stock
+      if (newStatus === 'cancelled') {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, { $inc: { stockQuantity: item.quantity } });
+        }
+      }
+    }
     const updatedOrder = await order.save();
-
+    // Log the status change
+    if (newStatus !== originalStatus) {
+      await OrderStatusLog.create({
+        orderId: updatedOrder._id,
+        orderNumber: updatedOrder.orderNumber,
+        changedBy: req.user.id,
+        oldStatus: originalStatus,
+        newStatus: newStatus,
+      });
+      // --- NEW: Email logic placed directly here ---
+      try {
+          const token = updatedOrder.viewToken;
+          if (newStatus === 'shipped') {
+              await sendOrderShippedEmail(updatedOrder, token);
+          } else if (newStatus === 'cancelled') {
+              await sendOrderCancelledEmail(updatedOrder, token);
+          } else if (newStatus === 'received' && originalStatus === 'pending payment') {
+              await sendPaymentReceivedEmail(updatedOrder, token);
+          }
+      } catch (emailError) {
+          console.error(`Email failed to send for order ${updatedOrder.orderNumber}:`, emailError);
+      }
+    }
     res.json({
       msg: 'Order updated successfully',
       order: updatedOrder
     });
 
   } catch (err) {
-    // This will now catch errors from the changeOrderStatus service,
-    // like "Invalid status transition".
-    console.error(`Error updating order ${req.params.id}:`, err.message);
-    res.status(400).json({ msg: err.message });
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
 });
 
@@ -328,63 +333,123 @@ router.put('/:id/status', auth, async (req, res) => {
 });
 
 // @route   GET /api/orders/:id/picklist
-// @desc    Securely serves the picklist PDF for a single order
-// @access  Protected (Admin)
+// @desc    Generate a PDF pick list for a single order
+// @access  Protected
 router.get('/:id/picklist', auth, async (req, res) => {
+  console.log("Picklist being created for :"+req.params.id);
   try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order || !order.picklistFilename) {
-      return res.status(404).json({ msg: 'Picklist not found for this order.' });
+    let setting = await Setting.findOne();
+    if (!setting) {
+        setting = { shopTitle: 'My Shop' }; 
     }
 
-    const filePath = path.join(__dirname, '..', 'storage', 'picklists', order.picklistFilename);
-
-    if (fs.existsSync(filePath)) {
-      // --- UPDATED: More robust file streaming method ---
-      // Set headers to tell the browser it's a PDF file for download
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename=${order.picklistFilename}`);
-      
-      console.log(`Serving picklist for order ${order._id}: ${order.picklistFilename}`);
-
-      // Create a read stream from the file and pipe it to the response
-      const fileStream = fs.createReadStream(filePath);
-      fileStream.pipe(res);
-      // --- END UPDATED METHOD ---
-    } else {
-      console.error(`File not found on disk: ${filePath}`);
-      return res.status(404).json({ msg: 'Picklist file is missing.' });
-    }
-
-  } catch (err) {
-    console.error("Error serving picklist:", err.message);
-    res.status(500).send('Server Error');
-  }
-});
-
-// @route   POST /api/orders/:id/generate-picklist
-// @desc    Manually generates a picklist for an order
-// @access  Protected (Admin)
-router.post('/:id/generate-picklist', auth, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id).populate('items.productId');
-    if (!order) {
-      return res.status(404).json({ msg: 'Order not found' });
-    }
-
-    const picklistFilename = await generateAndSavePickList(order);
-    order.picklistFilename = picklistFilename;
-    await order.save();
-
-    res.json({ 
-      msg: 'Picklist generated successfully.',
-      order: order 
+    const order = await Order.findById(req.params.id).populate({
+      path: 'items.productId',
+      model: 'Product',
+      select: 'name dimensions weight sku'
     });
 
+    if (!order) {
+      return res.status(404).send('Order not found');
+    }
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    const filename = `PickList-Order-${order.orderNumber}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    // --- Helper function for drawing sections ---
+    const drawSection = (title, contentLines) => {
+        doc.fontSize(10).font('Helvetica-Bold').text(title, 40, doc.y);
+        doc.strokeColor('#aaaaaa').lineWidth(0.5).moveTo(40, doc.y + 2).lineTo(550, doc.y + 2).stroke();
+        doc.moveDown(1.0);
+        doc.fontSize(10).font('Helvetica');
+        contentLines.forEach(line => doc.text(line, { indent: 10 }));
+        doc.moveDown(1.5);
+    };
+    
+    // --- Draw the PDF Content ---
+    
+    // Main Header
+    doc.fontSize(20).font('Helvetica-Bold').text(`Pick List #${order.orderNumber}`, 50, 50);
+    doc.moveDown(2);
+
+    // Customer Section
+    const customerLines = [
+        `${order.customerDetails.name}`,
+        // Using the single address field from the model
+        `${order.customerDetails.address}`
+    ];
+    drawSection('Customer', customerLines);
+
+    // Shipping Section
+    const shippingLines = [
+        `${order.shippingDetails.shippingMethodName} , cost: € ${order.shippingCost || '0.00'}`
+    ];
+    drawSection('Shipping', shippingLines);
+
+    // Payment Section - Simplified to match the model
+    let paymentLines = [
+        `Method: ${order.paymentDetails.paymentMethod || 'N/A'}, Status: ${order.paymentDetails.paymentStatus || 'N/A'},  Amount: € ${order.totalAmount}`,
+    ];
+    if (order.paymentDetails.paymentDate) {
+        paymentLines.push(`Date: ${new Date(order.paymentDetails.paymentDate).toLocaleDateString()}`);
+    }
+    if (order.paymentDetails.paymentTransactionId) {
+        paymentLines.push(`Transaction ID: ${order.paymentDetails.paymentTransactionId}`);
+    }
+    drawSection('Payment', paymentLines);
+
+    doc.moveDown(1);
+    
+    // Table Header
+    const tableTop = doc.y;
+    doc.font('Helvetica').fontSize(10);
+    doc.text('Qty', 40, tableTop);
+    doc.text('sku', 70, tableTop);
+    doc.text('Product Name', 140, tableTop);
+    doc.text('Specs', 420, tableTop);
+    doc.text('-', 540, tableTop);
+    doc.rect(40, tableTop + 20, 520, 0.5).stroke();
+    doc.moveDown(2);
+
+
+    // Items Table Rows
+    doc.font('Helvetica').fontSize(9);
+    for (const item of order.items) {
+        const product = item.productId;
+        const y = doc.y;
+        
+        if (product) {
+            doc.text(`${item.quantity}x`, 40, y, { width: 30 });
+            doc.text(`${product.sku || 'N/A'}`, 70, y , { width: 70 });
+            doc.text(product.name, 140, y, { width: 250 });
+            
+            let specs = [];
+            if (product.weight > 0) specs.push(`${product.weight} g`);
+            if (product.dimensions && product.dimensions.length > 0) specs.push(`${product.dimensions.length} x ${product.dimensions.width} x ${product.dimensions.height} cm`);
+            doc.font('Helvetica').fontSize(9).text(specs.join(' / '), 420, y, { width: 150 });
+        } else {
+            doc.text(`${item.quantity}x`, 50, y, { width: 40 });
+            doc.font('Helvetica-Bold').fillColor('red').text('[Product not found in database]', 90, y, { width: 400 });
+            doc.fillColor('black');
+        }
+        
+        doc.rect(540, y - 5, 20, 20).stroke();
+        
+        doc.moveDown(1.5);
+    }
+
+    doc.end();
+
   } catch (err) {
-    console.error("Error manually generating picklist:", err.message);
-    res.status(500).send('Server Error');
+    console.error("Error generating picklist:", err.message);
+    res.status(500).send('Server Error while generating picklist');
   }
 });
+
+
 module.exports = router;

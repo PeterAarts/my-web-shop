@@ -30,16 +30,16 @@ const shippingDetailsSchema = new Schema({
 }, { _id: false });  
 
 const orderSchema = new Schema({
-  user:               {type: mongoose.Schema.Types.ObjectId,required: false,ref: 'User'},
-  orderNumber:        {type: String,required: true,unique: true},
-  customerDetails:    {
-    name:       {type: String, required: true },
-    email:      {type: String, required: true },
-    address:    {type: String, required: true }
+  user:             { type: mongoose.Schema.Types.ObjectId,required: false,ref: 'User'},
+  orderNumber:      { type: String,required: true,unique: true},
+  customerDetails:  {
+    name:       { type: String, required: true },
+    email:      { type: String, required: true },
+    address:    { type: String, required: true }
   },
-  items:               [orderItemSchema],
-  totalAmount:         {type: Number,required: true},
-  status:              {type: String,required: true,
+  items: [orderItemSchema],
+  totalAmount:      { type: Number,required: true},
+  status:           { type: String,required: true,
     enum: [
       'created', 
       'received', 
@@ -51,17 +51,16 @@ const orderSchema = new Schema({
     ],
     default: 'created'
   },
-  paymentDetails:       {type: paymentDetailsSchema,default: () => ({})},
-  shippingDetails:      {type: shippingDetailsSchema,default: () => ({})},
-  reservationExpiresAt: {type: Date},
-  shippingCost:         {type: String},
-  viewToken:            {type: String },
-  viewTokenExpires:     {type: Date },
-  active:               {type: Boolean, default: true, index: true }
+  paymentDetails:       { type: paymentDetailsSchema,default: () => ({})},
+  shippingDetails:      { type: shippingDetailsSchema,default: () => ({})},
+  reservationExpiresAt: { type: Date},
+  viewToken:            { type: String },
+  viewTokenExpires:     { type: Date },
+  picklistFilename:     { type: String, default: '' },
+  active:               { type: Boolean, default: true, index: true }
 }, {
   timestamps: true
 });
 
 const Order = mongoose.model('Order', orderSchema);
-
 module.exports = Order;

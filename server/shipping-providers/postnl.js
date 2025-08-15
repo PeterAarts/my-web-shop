@@ -1,227 +1,215 @@
 // FILE: server/shipping-providers/postnl.js
-// This provider is now a simple rate-lookup module.
+
+const axios = require('axios');
+const Setting = require('../models/Setting');
+//const { version } = require('pdfkit');
+
+const version = '1.0.8'; // Define the version of this shipping provider module
+
+// Helper function to determine the shipping zone from a country code
+const getZoneForCountry = (countryCode) => {
+  const eur1Countries = ["BE", "DK", "DE", "FR", "IT", "LU", "AT", "ES", "GB", "SE"];
+  const eur2Countries = ["FI", "HU", "IE", "PL", "PT", "SI", "SK", "CZ"];
+  
+  if (!countryCode) return 'NL';
+  if (countryCode.toUpperCase() === 'NL') return 'NL';
+  if (eur1Countries.includes(countryCode.toUpperCase())) return 'EUR1';
+  if (eur2Countries.includes(countryCode.toUpperCase())) return 'EUR2';
+  return 'ROW'; // Rest of World
+};
 
 /**
- * Creates a shipping label by calling the external PostNL API.
- * @param {object} order - The full order object from your database.
- * @param {string} productCode - The PostNL product code for the chosen shipping method.
- * @param {object} providerConfig - The provider's configuration from the database (contains apiUrl, credentials).
- * @returns {Promise<object>} A promise that resolves to an object with { trackingNumber, labelData }.
- */
-async function createLabel(order, productCode, providerConfig) {
-  // 1. Map your order data to the PostNL API's expected format.
-  // This is an example; you will need to map your actual order address fields.
-  const postnlPayload = {
-    Customer: {
-      CustomerCode: providerConfig.credentials.customerCode, // Assumes you add these to the model
-      CustomerNumber: providerConfig.credentials.customerNumber,
-      CollectionLocation: providerConfig.credentials.collectionLocation,
-      Address: { /* Your sender address details */ }
-    },
-    Message: {
-      MessageID: "1",
-      Printertype: "GraphicFile|PDF"
-    },
-    Shipments: [
-      {
-        Addresses: [
-          {
-            AddressType: "01", // Recipient address
-            FirstName: order.shippingAddress.firstName,
-            Name: order.shippingAddress.lastName,
-            Street: order.shippingAddress.street,
-            HouseNr: order.shippingAddress.houseNumber,
-            Zipcode: order.shippingAddress.zipCode,
-            City: order.shippingAddress.city,
-            Countrycode: order.shippingAddress.countryCode
-          }
-        ],
-        Dimension: { Weight: order.totalWeight }, // Assumes totalWeight is on the order
-        ProductCodeDelivery: productCode,
-        Reference: order._id.toString() // Use your internal order ID as the reference
-      }
-    ]
-  };
-
-  const payloadString = JSON.stringify(postnlPayload);
-  const { hostname, pathname } = new URL(providerConfig.apiUrl);
-
-  const options = {
-    hostname: hostname,
-    path: pathname,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(payloadString),
-      'apikey': providerConfig.credentials.apiKey
-    }
-  };
-
-  // 2. Use the built-in `https` module to make the API call, wrapped in a Promise.
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let responseBody = '';
-      res.on('data', (chunk) => {
-        responseBody += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          const responseJson = JSON.parse(responseBody);
-          if (res.statusCode === 200 && responseJson.ResponseShipments) {
-            // 3. On success, parse the response and return a standardized object.
-            const shipment = responseJson.ResponseShipments[0];
-            resolve({
-              trackingNumber: shipment.Barcode,
-              labelData: shipment.Labels[0].Content // This is the Base64 encoded PDF
-            });
-          } else {
-            // On API error, reject with the details.
-            reject(new Error(`PostNL API Error (${res.statusCode}): ${responseBody}`));
-          }
-        } catch (e) {
-          reject(new Error(`Failed to parse PostNL API response: ${e.message}`));
-        }
-      });
-    });
-
-    req.on('error', (e) => {
-      // Handle network errors
-      reject(new Error(`Network request failed: ${e.message}`));
-    });
-
-    // Write the payload to the request and send it.
-    req.write(payloadString);
-    req.end();
-  });
-}
-
-
-/**
- * Finds the correct shipping rate from a pre-defined rate table.
- * This version selects only the single cheapest "Tracked" and "Untracked" option overall.
- * @param {object} address - The destination address (to determine the zone).
- * @param {Array<object>} fittingPackages - An array of package objects that fit the order.
+ * Finds available PostNL shipping rates for a given order.
+ * @param {object} address - The customer's shipping address.
+ * @param {Array} fittingPackages - A list of possible package sizes.
  * @param {number} totalWeight - The total weight of the order in grams.
- * @param {object} providerConfig - The configuration for this provider from the database.
- * @returns {Promise<Array>} A promise that resolves to the filtered list of rate objects.
+ * @param {object} providerConfig - The PostNL configuration from the database.
+ * @returns {Promise<Array>} A list of rate objects.
  */
-async function getRates(address, fittingPackages, totalWeight, providerConfig) {
-  // 1. Define Shipping Zones
-  const ZONES = {
-    EUR1: ['BE', 'DE', 'DK','FR', 'IT', 'LU', 'ES','SE', 'AT'],
-    EUR2: ['FI', 'IE', 'PL', 'PT', 'GB','NO', 'CZ', 'HU', 'SK', 'SI', 'HR', 'RO', 'BG', 'LT', 'LV', 'EE'],
-  };
+const getRates = async (address, fittingPackages, totalWeight, providerConfig) => {
+  const zone = getZoneForCountry(address.countryCode);
+  const zoneRates = providerConfig.rateCard[zone];
 
-  // 2. Determine the Shipping Zone from the address
-  let zoneKey = 'ROW'; // Default to Rest of World
-  if (address.countryCode === 'NL') {
-    zoneKey = 'NL';
-  } else if (ZONES.EUR1.includes(address.countryCode.toUpperCase())) {
-    zoneKey = 'EUR1';
-  } else if (ZONES.EUR2.includes(address.countryCode.toUpperCase())) {
-    zoneKey = 'EUR2';
-  }
-
-  // 3. Look up the rates for the determined zone
-  const zoneRates = providerConfig.rateCard[zoneKey];
-  if (!zoneRates || zoneRates.length === 0) {
-    return []; // No rates are defined for this zone
-  }
-
-  // 4. Find ALL rates that match ANY of the fitting packages and can handle the weight
-  const fittingPackageNames = new Set(fittingPackages.map(p => p.name));
-  const allMatchingRates = zoneRates.filter(rate => {
-    const isCorrectPackage = fittingPackageNames.has(rate.packageName);
-    const isSufficientWeight = totalWeight <= rate.maxWeight;
-    return isCorrectPackage && isSufficientWeight;
-  });
-
-  if (allMatchingRates.length === 0) {
+  if (!zoneRates) {
+    console.log(`No rates found for zone: ${zone}`);
     return [];
   }
 
-  // 5. Find the single cheapest tracked and untracked options from ALL possibilities
-  const finalRates = [];
-  
-  const allUntracked = allMatchingRates.filter(r => r.serviceLevel === 'Untracked').sort((a, b) => a.price - b.price);
-  const allTracked = allMatchingRates.filter(r => r.serviceLevel === 'Tracked').sort((a, b) => a.price - b.price);
-
-  if (allUntracked.length > 0) {
-    finalRates.push(allUntracked[0]); // Add the absolute cheapest untracked option
+  const applicableRates = zoneRates.filter(rate => totalWeight <= rate.maxWeight);
+  // Group by serviceLevel to find the cheapest for 'Tracked' and 'Untracked'
+  const cheapestRatesByServiceLevel = {};
+  for (const rate of applicableRates) {
+    if (!cheapestRatesByServiceLevel[rate.serviceLevel] || rate.price < cheapestRatesByServiceLevel[rate.serviceLevel].price) {
+      cheapestRatesByServiceLevel[rate.serviceLevel] = rate;
+    }
   }
-  if (allTracked.length > 0) {
-    finalRates.push(allTracked[0]); // Add the absolute cheapest tracked option
-  }
+  // --- END OF CORRECTION ---
 
-  // 6. Format the final list for the client
-  return finalRates.map(rate => ({
-    id: `${providerConfig.moduleName}-${zoneKey}-${rate.productCode}-${rate.serviceLevel}`,
-    name: `${providerConfig.name} - ${rate.packageName} (${rate.serviceLevel})  < ${rate.maxWeight}g`,
-    price: rate.price
+  return Object.values(cheapestRatesByServiceLevel).map(rate => ({
+    id: `postnl-${zone}-${rate.productCode}-${rate.serviceLevel}`,
+    name: `PostNL - ${rate.packageName} (${rate.serviceLevel}) < ${rate.maxWeight}g`,
+    price: rate.price,
+    provider: 'postnl'
   }));
-}
-/**
- * Provides metadata about this shipping provider.
- * This function is called at server startup to sync with the database.
- * @returns {object} An object containing the provider's registration details.
- */
-function register() {
-  return {
-    name: 'PostNL', // The user-friendly name
-    moduleName: 'postnl', // The unique key linking to this file
-    usesApiForRates: false, // This provider uses a local rate table
-  };
-}
-
-const defaultRates = {
-  "NL": [
-    { "maxWeight": 20,    "price": 1.21,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 50,    "price": 2.42,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 350,   "price": 3.92,  "packageName": "Letter Small",  "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 2000,  "price": 4.25,  "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "2928" },
-    { "maxWeight": 10000, "price": 7.95,  "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "3085" },
-    { "maxWeight": 23000, "price": 14.50, "packageName": "Large Parcel",  "serviceLevel": "Tracked",    "productCode": "3085" }
-  ],
-  "EUR1": [
-    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
-    { "maxWeight": 2000,  "price": 12.00, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
-    { "maxWeight": 2000,  "price": 14.50, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4945" },
-    { "maxWeight": 5000,  "price": 19.50, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" },
-    { "maxWeight": 10000, "price": 25.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" }
-  ],
-  "EUR2": [
-    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
-    { "maxWeight": 2000,  "price": 14.50, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
-    { "maxWeight": 2000,  "price": 20.00, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4945" },
-    { "maxWeight": 5000,  "price": 26.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" },
-    { "maxWeight": 10000, "price": 32.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4945" }
-  ],
-  "ROW": [
-    { "maxWeight": 20,    "price": 1.90,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 50,    "price": 3.80,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 100,   "price": 5.70,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 350,   "price": 7.60,  "packageName": "Letter",       "serviceLevel": "Untracked",  "productCode": "2928" },
-    { "maxWeight": 2000,  "price": 9.80,  "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
-    { "maxWeight": 2000,  "price": 12.00, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3550" },
-    { "maxWeight": 2000,  "price": 19.00, "packageName": "Letterbox",     "serviceLevel": "Untracked",  "productCode": "2940" },
-    { "maxWeight": 2000,  "price": 29.50, "packageName": "Letterbox",     "serviceLevel": "Tracked",    "productCode": "3530" },
-    { "maxWeight": 2000,  "price": 31.00, "packageName": "Small Parcel",  "serviceLevel": "Tracked",    "productCode": "4950" },
-    { "maxWeight": 5000,  "price": 38.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4950" },
-    { "maxWeight": 10000, "price": 62.00, "packageName": "Medium Parcel", "serviceLevel": "Tracked",    "productCode": "4950" }
-  ]
 };
- 
+
+/**
+ * Creates a shipping label by calling the PostNL API.
+ * @param {object} order - The full order object, populated with product details.
+ * @param {string} productCode - The specific PostNL service code (e.g., '3085').
+ * @param {object} providerConfig - The PostNL configuration from the database.
+ * @returns {Promise<object>} An object with the label data and tracking number.
+ */
+const createLabel = async (order, productCode, providerConfig) => {
+  const settings = await Setting.getSingleton();
+  const { shopAddress } = settings;
+  const { customerDetails } = order;
+
+  // --- NEW: Find the active environment from the provider's settings ---
+  const activeEnv = providerConfig.environments.find(
+    env => env.name === providerConfig.activeEnvironment
+  );
+
+  if (!activeEnv) {
+    throw new Error(`Active environment "${providerConfig.activeEnvironment}" not found for ${providerConfig.name}.`);
+  }
+  // --- END NEW SECTION ---
+
+  const totalWeight = order.items.reduce((acc, item) => {
+      const weight = item.productId && typeof item.productId.weight === 'number' ? item.productId.weight : 0;
+      return acc + (weight * item.quantity);
+  }, 0);
+
+  const addressParts = customerDetails.address.split(',').map(p => p.trim());
+  if (addressParts.length < 4) {
+    throw new Error(`Invalid address format for order ${order.orderNumber}. Expected at least 4 comma-separated parts.`);
+  }
+  const [streetAndNumber, zipCode, city, countryCode] = addressParts;
+  
+  const streetParts = streetAndNumber.match(/(.*?)\s*(\d+[A-Za-z]?.*)/);
+  const street = streetParts ? streetParts[1].trim() : streetAndNumber;
+  const houseNumber = streetParts ? streetParts[2].trim() : '0';
+
+  // UPDATED: Use credentials from the active environment
+  const apiRequestData = {
+    Customer: {
+      CustomerCode: activeEnv.credentials.customerCode,
+      CustomerNumber: activeEnv.credentials.customerNumber,
+      Address: {
+        AddressType: '02',
+        CompanyName: shopAddress.name,
+        Street: shopAddress.street,
+        Zipcode: shopAddress.zipCode.replace(/\s/g, ''),
+        City: shopAddress.city,
+        Countrycode: shopAddress.countryCode
+      }
+    },
+    Message: {
+      MessageID: '1',
+      Printertype: 'GraphicFile|PDF'
+    },
+    Shipments: [{
+      Addresses: [{
+        AddressType: '01',
+        FirstName: customerDetails.name.split(' ')[0],
+        Name: customerDetails.name.split(' ').slice(1).join(' '),
+        Street: street,
+        HouseNr: houseNumber,
+        Zipcode: zipCode.replace(/\s/g, ''),
+        City: city,
+        Countrycode: countryCode
+      }],
+      Contacts: [{
+          ContactType: '01',
+          Email: customerDetails.email,
+      }],
+      Dimension: {
+        Weight: totalWeight
+      },
+      ProductCodeDelivery: productCode,
+      Reference: order.orderNumber
+    }]
+  };
+
+  try {
+    console.log(`Sending label request to PostNL (${activeEnv.name}) for order: ${order.orderNumber}`);
+    // UPDATED: Use the apiUrl and apiKey from the active environment
+    const response = await axios.post(activeEnv.apiUrl, apiRequestData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': activeEnv.credentials.apiKey
+      }
+    });
+
+    const shipmentResponse = response.data.ResponseShipments[0];
+    if (shipmentResponse && shipmentResponse.Labels && shipmentResponse.Barcode) {
+      return {
+        labelData: shipmentResponse.Labels[0].Content,
+        trackingNumber: shipmentResponse.Barcode
+      };
+    } else {
+      throw new Error('Invalid response structure from PostNL API.');
+    }
+    
+  } catch (error) {
+    const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
+    console.error(`PostNL API Error for order ${order.orderNumber}:`, errorMessage);
+    throw new Error(`Failed to create label with PostNL: ${errorMessage}`);
+  }
+};
+
+const defaultConfig = {
+  description: 'Provider for PostNL services in the Netherlands and abroad.',
+  logoUrl: '/assets/postnl-logo.png', // Example path, adjust as needed
+  activeEnvironment: 'sandbox',
+  version: '1.0.8',
+  environments: [
+    {
+      name: 'production',
+      apiUrl: 'https://api.postnl.nl/shipment/v2_2/label',
+      credentials: { apiKey: '', apiSecret: '', customerCode: '', customerNumber: '' }
+    },
+    {
+      name: 'sandbox',
+      apiUrl: 'https://api-sandbox.postnl.nl/shipment/v2_2/label',
+      credentials: { apiKey: '', apiSecret: '', customerCode: '', customerNumber: '' }
+    }
+  ],
+  rateCard: {
+    "NL": [
+      { "maxWeight": 20, "price": 1.21, "packageName": "Letter Small", "serviceLevel": "Untracked", "productCode": "2928" },
+      { "maxWeight": 50, "price": 2.42, "packageName": "Letter Small", "serviceLevel": "Untracked", "productCode": "2928" },
+      { "maxWeight": 350, "price": 3.92, "packageName": "Letter Small", "serviceLevel": "Untracked", "productCode": "2928" },
+      { "maxWeight": 2000, "price": 4.25, "packageName": "Letterbox", "serviceLevel": "Tracked", "productCode": "2928" },
+      { "maxWeight": 10000, "price": 7.95, "packageName": "Medium Parcel", "serviceLevel": "Tracked", "productCode": "3085" },
+      { "maxWeight": 23000, "price": 14.5, "packageName": "Large Parcel", "serviceLevel": "Tracked", "productCode": "3085" }
+    ],
+    "EUR1": [
+      { "maxWeight": 350, "price": 7.6, "packageName": "Letter", "serviceLevel": "Untracked", "productCode": "2940" },
+      { "maxWeight": 2000, "price": 9.95, "packageName": "Letterbox", "serviceLevel": "Tracked", "productCode": "3550" },
+      { "maxWeight": 2000, "price": 14.5, "packageName": "Small Parcel", "serviceLevel": "Tracked", "productCode": "4945" },
+      { "maxWeight": 5000, "price": 19.5, "packageName": "Medium Parcel", "serviceLevel": "Tracked", "productCode": "4945" }
+    ],
+    "EUR2": [
+      { "maxWeight": 350, "price": 7.6, "packageName": "Letter", "serviceLevel": "Untracked", "productCode": "2940" },
+      { "maxWeight": 2000, "price": 14.5, "packageName": "Letterbox", "serviceLevel": "Tracked", "productCode": "3550" },
+      { "maxWeight": 2000, "price": 20, "packageName": "Small Parcel", "serviceLevel": "Tracked", "productCode": "4945" },
+      { "maxWeight": 5000, "price": 26, "packageName": "Medium Parcel", "serviceLevel": "Tracked", "productCode": "4945" }
+    ],
+    "ROW": [
+      { "maxWeight": 350, "price": 7.6, "packageName": "Letter", "serviceLevel": "Untracked", "productCode": "2940" },
+      { "maxWeight": 2000, "price": 29.5, "packageName": "Letterbox", "serviceLevel": "Tracked", "productCode": "3530" },
+      { "maxWeight": 2000, "price": 31, "packageName": "Small Parcel", "serviceLevel": "Tracked", "productCode": "4950" },
+      { "maxWeight": 5000, "price": 38, "packageName": "Medium Parcel", "serviceLevel": "Tracked", "productCode": "4950" }
+    ]
+  }
+};
+
 module.exports = {
   key: 'postnl',
   name: 'PostNL',
-  getRates,createLabel 
+  version, // Export the version
+  defaultConfig, // Export the default config
+  getRates,
+  createLabel
 };

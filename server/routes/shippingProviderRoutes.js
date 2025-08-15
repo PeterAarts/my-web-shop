@@ -18,57 +18,28 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// @route   POST api/shipping-providers
-// @desc    Create a new shipping provider
-// @access  Private/Admin
-router.post('/', auth, async (req, res) => {
-  const { name, providerKey, apiUrl, isEnabled } = req.body;
-  try {
-    let provider = await ShippingProvider.findOne({ providerKey });
-    if (provider) {
-        return res.status(400).json({ msg: 'A provider with this key already exists.' });
-    }
-
-    provider = new ShippingProvider({
-        name,
-        providerKey,
-        apiUrl,
-        isEnabled,
-        credentials: { apiKey: '' },
-        rateCard: {} // Initialize with an empty rate card
-    });
-
-    await provider.save();
-    res.status(201).json(provider);
-
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
+// --- REMOVED: POST api/shipping-providers ---
+// This route is removed because providers should only be created
+// automatically by the shippingSyncService when a new provider file is detected.
+// Manually creating a provider from the UI is not a valid workflow.
 
 
 // @route   PUT api/shipping-providers/:id
 // @desc    Update a shipping provider's details
 // @access  Private/Admin
 router.put('/:id', auth, async (req, res) => {
-  // 1. Destructure the new rateCard field from the request body
-  const { name, isEnabled, apiUrl, credentials, rateCard } = req.body;
-
-  // 2. Build the fields object to update dynamically
-  const providerFields = {};
-  if (name) providerFields.name = name;
-  if (isEnabled !== undefined) providerFields.isEnabled = isEnabled;
-  if (apiUrl) providerFields.apiUrl = apiUrl;
-  if (credentials) providerFields.credentials = credentials;
-  if (rateCard) providerFields.rateCard = rateCard; // Add rateCard to the update object
-
   try {
-    // 3. Find the provider by ID and update it with the new fields
+    // Use the entire request body for the update, as it's controlled by the admin panel.
+    // Mongoose will only update the fields that are present in the model.
+    const providerFields = req.body;
+    
+    // It's good practice to prevent the immutable _id from being part of the update operation
+    delete providerFields._id;
+
     const provider = await ShippingProvider.findByIdAndUpdate(
       req.params.id,
       { $set: providerFields },
-      { new: true } // Return the updated document
+      { new: true, runValidators: true } // Return the updated document and run schema validators
     );
 
     if (!provider) {
