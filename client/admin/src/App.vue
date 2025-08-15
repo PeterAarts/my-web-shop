@@ -1,8 +1,11 @@
 <template>
   <RouterView />
+  <Notification /> <ConfirmationDialog /> 
 </template>
 <script setup>
   import { RouterView } from 'vue-router'
+  import Notification from '@/components/Notification.vue';
+  import ConfirmationDialog from '@/components/ConfirmationDialog.vue';
   /**
  * Toggles the Bootstrap color theme (light/dark) and saves it to localStorage.
  */
