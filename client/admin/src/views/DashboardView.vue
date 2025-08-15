@@ -22,7 +22,7 @@
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card-title text-uppercase mb-0">Recent Orders</h5>
-                <RouterLink :to="{ name: 'orders' }"> class="btn btn-sm btn-outline-secondary">View All</RouterLink>
+                <RouterLink :to="{ name: 'orders' }"  class="btn btn-sm btn-outline-primary">View All</RouterLink>
               </div>
               <OrdersTable 
                 :orders="recentOrders" 

@@ -24,8 +24,9 @@
           :orders="orders"
           @edit-order="selectOrderForEdit"
           @selection-changed="updateSelection"
-          @create-label="selectOrderForLabel"
-          @download-picklist="handleDownloadPickList" 
+          @create-label="createLabelForOrder"
+          @download-picklist="handleDownloadPickList"
+          @generate-picklist="handleGeneratePickList" 
         />
       </div>
     </div>
@@ -61,7 +62,7 @@
                     </div>
                     <div class="col-md-1">
                         <label class="form-label">Price in €</label>
-                        <input type="text" class="form-control" :value="orderForm.shippingDetails.shippingMethodCost" disabled />
+                        <input type="text" class="form-control" :value="orderForm.shippingDetails.shippingCost" disabled />
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Tracking #</label>
@@ -140,12 +141,7 @@
       </div>
     </div>
 
-    <LabelCreationModal
-      v-if="orderForLabel"
-      :order="orderForLabel"
-      @label-created="handleLabelCreated"
-      ref="labelModalRef"
-    />
+    <!-- REMOVED LabelCreationModal component -->
   </div>
 </template>
 
@@ -154,7 +150,7 @@ import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from
 import apiClient from '@/utils/apiClient';
 import { useNotifier } from '@/composables/useNotifier';
 import OrdersTable from '@/components/OrdersTable.vue';
-import LabelCreationModal from '@/components/LabelCreationModal.vue';
+// REMOVED LabelCreationModal import
 
 const { addNotification } = useNotifier();
 const orders = ref([]);
@@ -174,13 +170,9 @@ const allowedStatuses = ['created', 'received', 'processing', 'ready for shipmen
 const selectedOrders = ref([]);
 const showArchived = ref(false);
 const isArchiving = ref(false);
-
-const orderForLabel = ref(null);
-const labelModalRef = ref(null);
-
-// --- NEW: State for the Order History feature ---
 const orderHistory = ref([]);
 const historyLoading = ref(false);
+let refreshInterval = null;
 
 const apiBaseUrl = computed(() => {
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -190,34 +182,24 @@ const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const getStatusBadgeClass = (status) => {
   const map = {
     shipped: 'bg-success',
-    processing: 'bg-info',
+    processing: 'bg-secondary',
     cancelled: 'bg-danger',
     rejected: 'bg-danger',
     'pending payment': 'bg-warning text-dark',
     'ready for shipment': 'bg-primary',
-    received: 'bg-success',
+    received: 'bg-secondary',
     created: 'bg-secondary',
-    paid: 'bg-success',
+    paid: 'bg-primary',
   };
   return map[status] || 'bg-light text-dark';
 };
-const formatErrorMessage = (message) => {
-  if (!message) return 'Unknown error.';
-  // Extracts the core error message from the EJS output
-  const parts = message.split(' ');
-  if (parts.includes('is') && parts.includes('not') && parts.includes('defined')) {
-    const errorIndex = parts.indexOf('is');
-    return parts.slice(errorIndex - 1).join(' ');
-  }
-  return message;
-};
+
 watch(showArchived, () => { fetchOrders(); });
 
 const groupedHistory = computed(() => {
   if (!orderHistory.value || orderHistory.value.length === 0) {
     return {};
   }
-  // The .reduce method iterates over the history and groups items into an object
   return orderHistory.value.reduce((groups, log) => {
     const date = new Date(log.date).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -238,17 +220,14 @@ const fetchOrders = async () => {
   } catch (error) { console.error('Error fetching orders:', error); }
 };
 
-// --- MODIFIED: The function to open the edit modal ---
 const selectOrderForEdit = async (order) => {
   const orderCopy = JSON.parse(JSON.stringify(order));
   Object.assign(orderForm, orderCopy);
   
-  // Clear old history and show modal immediately
   orderHistory.value = [];
   historyLoading.value = true;
   orderModal.show();
 
-  // Fetch the new history in the background
   try {
     orderHistory.value = await apiClient(`/logs/${order._id}`);
   } catch (error) {
@@ -264,41 +243,73 @@ const updateSelection = (newSelection) => {
 };
 
 const handleDownloadPickList = async (order) => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    addNotification('You must be logged in to download this file.', 'failure');
+    return;
+  }
+  
+  const downloadUrl = `${apiBaseUrl.value}/api/orders/${order._id}/picklist`;
+
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      addNotification('You must be logged in to download this file.', 'failure');
-      return;
-    }
-    const response = await fetch(`${apiBaseUrl.value}/api/orders/${order._id}/picklist`, {
+    const response = await fetch(downloadUrl, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!response.ok) { throw new Error('Failed to download the pick list.'); }
+
+    if (!response.ok) {
+      throw new Error('Failed to download the pick list. Please try again.');
+    }
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `PickList-${order.orderNumber}.pdf`);
+    link.setAttribute('download', `Picklist-${order.orderNumber}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.parentNode.removeChild(link);
     window.URL.revokeObjectURL(url);
+
   } catch (error) {
     console.error('Download error:', error);
     addNotification(error.message, 'failure');
   }
 };
 
-const selectOrderForLabel = async (order) => {
-  orderForLabel.value = order;
-  await nextTick();
-  labelModalRef.value?.open();
+const handleGeneratePickList = async (order) => {
+  try {
+    const response = await apiClient(`/orders/${order._id}/generate-picklist`, {
+      method: 'POST'
+    });
+    addNotification(response.msg || 'Picklist generated successfully!', 'success');
+    await fetchOrders();
+  } catch (error) {
+    console.error('Failed to generate picklist:', error);
+  }
 };
 
-const handleLabelCreated = () => {
-  addNotification('Shipping label created successfully!', 'success');
-  fetchOrders();
-  orderForLabel.value = null;
+// --- NEW, STREAMLINED FUNCTION ---
+const createLabelForOrder = async (order) => {
+  if (!order.shippingDetails || !order.shippingDetails.shippingMethodId) {
+    addNotification('This order is missing the required shipping method information.', 'failure');
+    return;
+  }
+
+  try {
+    // Directly call the label creation endpoint with the saved rate ID
+    await apiClient('/shipping/label', {
+      method: 'POST',
+      body: {
+        orderId: order._id,
+        rateId: order.shippingDetails.shippingMethodId
+      }
+    });
+    // The apiClient will show the success message automatically
+    await fetchOrders(); // Refresh the order list to show the new label link
+  } catch (error) {
+    // The apiClient handles showing the error notification
+    console.error('Failed to create label:', error);
+  }
 };
 
 const updateOrder = async () => {
@@ -326,12 +337,7 @@ const updateOrder = async () => {
 
 const cancelEdit = () => { orderModal.hide(); };
 
-// Note: getNextStatus was not defined in the provided file, so it has been omitted.
-// const getNextStatus = (currentStatus) => { /* ... */ };
-
 const processSelectedOrders = async () => { 
-  // This function body was not provided in the original file.
-  // Assuming a bulk update might happen here.
   addNotification('Bulk processing not yet implemented.', 'info');
 };
 
@@ -353,11 +359,16 @@ onMounted(() => {
   if (orderModalRef.value) {
     orderModal = new window.bootstrap.Modal(orderModalRef.value);
   }
+  const refreshRate = 2 * 60 * 1000;
+  refreshInterval = setInterval(fetchOrders, refreshRate);
 });
 
 onUnmounted(() => {
   if (orderModal) {
     orderModal.dispose();
+  }
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
   }
 });
 </script>

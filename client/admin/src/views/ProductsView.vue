@@ -65,7 +65,7 @@
                 </td>
                 <td class="text-end">
                   <button @click="selectProductForEdit(product)" class="btn btn-sm btn-outline-secondary border-0 me-2"><i class="ph-duotone ph-pencil-simple"></i></button>
-                  <button @click="confirmDelete(product._id)" class="btn btn-sm btn-outline-danger border-0"><i class="ph-duotone ph-trash"></i></button>
+                  <button @click="confirmDelete(product)" class="btn btn-sm btn-outline-danger border-0"><i class="ph-duotone ph-trash"></i></button> 
                 </td>
               </tr>
             </tbody>
@@ -210,18 +210,17 @@ import { ref, reactive, onMounted, computed, onUnmounted, nextTick, watch } from
 import ProductImportModal from '@/components/ProductImportModal.vue';
 import apiClient from '@/utils/apiClient';
 import { useNotifier } from '@/composables/useNotifier';
-import eventBus from '@/utils/eventBus'; // MODIFIED: Import eventBus
+import eventBus from '@/utils/eventBus'; 
+import { showConfirmation, addNotification } from '@/composables/useNotifier';
 
-const { addNotification } = useNotifier();
-
-// --- MODIFIED: Added a loading state ---
+// ---  Added a loading state ---
 const loading = ref(true);
 
 const products = ref([]);
 const categories = ref([]);
 const tagsInput = ref('');
 
-// MODIFIED: Initialize settings with a safe default structure
+//  Initialize settings with a safe default structure
 const settings = ref({
   productSettings: {
     skuGeneration: 'manual'
@@ -331,17 +330,20 @@ const fetchProductsAndUpdateState = async () => {
   }
 };
 
-const confirmDelete = (id) => {
-  if (confirm('Are you sure you want to delete this product? This cannot be undone.')) {
-    deleteProduct(id);
-  }
-};
+const confirmDelete = async (product) => {
+  const confirmed = await showConfirmation({
+    title: 'Confirm Deletion',
+    message: `Are you sure you want to delete : <br><br><b>${product.name}</b> ?`,
+    alertType: 'danger' 
+  });
 
-const deleteProduct = async (id) => {
-  try {
-    await apiClient(`/products/${id}`, { method: 'DELETE' });
-    await fetchProductsAndUpdateState();
-  } catch (error) { /* Handled by apiClient */ }
+  if (confirmed) {
+    try {
+      await apiClient(`/products/${product._id}`, { method: 'DELETE' });
+      await fetchProductsAndUpdateState();
+    } 
+    catch (error) { /* Handled by apiClient */ }
+  }
 };
 
 // MODIFIED: Renamed from onProductImageSelected

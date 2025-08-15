@@ -3,10 +3,11 @@
   <div>
 
 
-    <div class="card">
-      <div class="p-3">
+    <div class="card d-flex">
+      <div class="ms-auto p-3 pb-0"><button @click="saveAllSettings" class="btn btn-primary btn-sm"><i class="ph-duotone ph-floppy-disk me-2"></i>Save All Settings</button></div>
+      <div class="p-3 d-flex">
         <!-- Tab Navigation -->
-        <ul class="nav nav-tabs p-3-tabs">
+        <ul class="nav nav-tabs p-3-tabs w-100">
           <li class="nav-item">
             <a class="nav-link" :class="{ active: activeTab === 'general' }" href="#" @click.prevent="activeTab = 'general'">General</a>
           </li>
@@ -31,11 +32,7 @@
           <li class="nav-item">
             <a class="nav-link" :class="{ active: activeTab === 'media' }" href="#" @click.prevent="activeTab = 'media'">Media & Social</a>
           </li>
-          <li class="d-flex ms-auto">
-            <button @click="saveAllSettings" class="btn btn-primary btn-sm"><i class="ph-duotone ph-floppy-disk me-2"></i>Save All Settings</button>
-          </li>
-        </ul>
-        
+        </ul>        
       </div>
       <div class="card-body p-4">
         <form @submit.prevent="saveAllSettings">
@@ -85,35 +82,35 @@
                   <input type="text" v-model="settingsForm.shopAddress.countryCode" id="shopCountry" class="form-control" placeholder="e.g., NL">
                 </div>
             </div>
-          </div>
-          <hr class="my-4">
-          <h5 class="card-title mb-4">Business & Payment Information</h5>
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label for="cocNumber" class="form-label">Chamber of Commerce No.</label>
-              <input type="text" v-model="settingsForm.businessDetails.chamberOfCommerceNumber" id="cocNumber" class="form-control">
+            <hr class="my-4">
+            <h5 class="card-title mb-4">Business & Payment Information</h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="cocNumber" class="form-label">Chamber of Commerce No.</label>
+                <input type="text" v-model="settingsForm.businessDetails.chamberOfCommerceNumber" id="cocNumber" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label for="vatNumber" class="form-label">VAT Number</label>
+                <input type="text" v-model="settingsForm.businessDetails.vatNumber" id="vatNumber" class="form-control">
+              </div>
             </div>
-            <div class="col-md-4">
-              <label for="vatNumber" class="form-label">VAT Number</label>
-              <input type="text" v-model="settingsForm.businessDetails.vatNumber" id="vatNumber" class="form-control">
-            </div>
-          </div>
-          <div class="row g-3 mt-2">
-            <div class="col-md-4">
-              <label for="bankAccountName" class="form-label">Bank Account Name</label>
-              <input type="text" v-model="settingsForm.businessDetails.bankAccountName" id="bankAccountName" class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label for="bankAccountNumber" class="form-label">Bank Account Number (IBAN)</label>
-              <input type="text" v-model="settingsForm.businessDetails.bankAccountNumber" id="bankAccountNumber" class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label for="bic" class="form-label">BIC / SWIFT</label>
-              <input type="text" v-model="settingsForm.businessDetails.bic" id="bic" class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label for="paypalEmail" class="form-label">PayPal Email (for manual requests)</label>
-              <input type="email" v-model="settingsForm.businessDetails.payPalEmail" id="paypalEmail" class="form-control">
+            <div class="row g-3 mt-2">
+              <div class="col-md-4">
+                <label for="bankAccountName" class="form-label">Bank Account Name</label>
+                <input type="text" v-model="settingsForm.businessDetails.bankAccountName" id="bankAccountName" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label for="bankAccountNumber" class="form-label">Bank Account Number (IBAN)</label>
+                <input type="text" v-model="settingsForm.businessDetails.bankAccountNumber" id="bankAccountNumber" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label for="bic" class="form-label">BIC / SWIFT</label>
+                <input type="text" v-model="settingsForm.businessDetails.bic" id="bic" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label for="paypalEmail" class="form-label">PayPal Email (for manual requests)</label>
+                <input type="email" v-model="settingsForm.businessDetails.payPalEmail" id="paypalEmail" class="form-control">
+              </div>
             </div>
           </div>
           <!-- Layout Tab -->
@@ -215,17 +212,17 @@
             <!-- Nested Tab Navigation -->
             <ul class="nav nav-tabs mb-4">
               <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeShippingTab === 'packages' }" href="#" @click.prevent="activeShippingTab = 'packages'">Package Sizes</a>
+                <a class="nav-link" :class="{ active: activeShippingTab === 'packages' }" href="#" @click.prevent="activeShippingTab = 'packages'">1. Package Sizes</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" :class="{ active: activeShippingTab === 'providers' }" href="#" @click.prevent="activeShippingTab = 'providers'">Providers</a>
+                <a class="nav-link" :class="{ active: activeShippingTab === 'providers' }" href="#" @click.prevent="activeShippingTab = 'providers'">2. Providers</a>
               </li>
             </ul>
 
             <!-- Packages Tab Content -->
            <div v-show="activeShippingTab === 'packages'">
               <h5 class="card-title mb-3">Defined Package Sizes</h5>
-              <p class="card-subtitle mb-3">These are the package sizes used for calculating shipping rates. Dimensions are in cm, weight in grams.</p>
+              <p class="card-subtitle mb-3">These are the package sizes used for calculating shipping rates. Dimensions are in cm, weight in grams. <br><u>Without packages defined, rates can't be set.</u></p>
               
               <table class="table align-middle">
                 <thead>
@@ -306,66 +303,40 @@
               <div v-if="loading.shipping" class="text-center">
                  <div class="spinner-border" role="status"></div>
               </div>
-              <div v-else>
-                <!-- Provider Loop -->
-                <div v-for="provider in shippingProviders" :key="provider._id" class="mb-4 p-3 border rounded">
-                  <div class="row g-3">
-                    <!-- Provider Details -->
-                    <div class="col-md-3">
-                      <label class="form-label">Provider Name</label>
-                      <input type="text" v-model="provider.name" class="form-control" disabled>
-                    </div>
-                    <div class="col-md-5">
-                      <label class="form-label">API URL</label>
-                      <input type="text" v-model="provider.apiUrl" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">API Key</label>
-                      <input type="password" v-model="provider.credentials.apiKey" class="form-control" placeholder="Enter new key to update">
-                    </div>
-
-                    <!-- START: Rate Card JSON Editor -->
-                    <div class="col-12">
-                      <label class="form-label">Rate Card (JSON)</label>
-                      <textarea v-model="provider.rateCardString" rows="8" class="form-control font-monospace"></textarea>
-                      <div class="form-text">
-                        Edit the provider's pricing structure. Must be valid JSON.
-                      </div>
-                    </div>
-                    <!-- END: Rate Card JSON Editor -->
-
-                    <div class="col-12 d-flex justify-content-between align-items-center">
-                       <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" v-model="provider.isEnabled" :id="`enabled-${provider._id}`">
-                          <label class="form-check-label" :for="`enabled-${provider._id}`">Enabled</label>
-                        </div>
-                      <button @click.prevent="saveShippingProvider(provider)" class="btn btn-secondary btn-sm">Save {{ provider.name }}</button>
-                    </div>
-                  </div>
-                </div>
+              <div v-else class="table-responsive">
+                <table class="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th style="width: 5%;">Logo</th>
+                      <th>Name</th>
+                      <th>Description</th>
+                      <th>Module Name</th>
+                      <th class="text-center">Enabled</th>
+                      <th>Active Environment</th>
+                      <th class="text-end"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="provider in shippingProviders" :key="provider._id">
+                      <td><img v-if="provider.logoUrl" :src="getImageUrl(provider.logoUrl)" style="height: 24px;"></td>
+                      <td>{{ provider.name }}</td>
+                      <td>{{ provider.description }}</td>
+                      <td><span class="font-monospace">{{ provider.moduleName }}</span></td>
+                      <td class="text-center">
+                        <span class="badge" :class="provider.isEnabled ? 'bg-success' : 'bg-secondary'">
+                          {{ provider.isEnabled ? 'Yes' : 'No' }}
+                        </span>
+                      </td>
+                      <td><span class="badge bg-primary text-capitalize">{{ provider.activeEnvironment }}</span></td>
+                      <td class="text-end">
+                        <button @click="openProviderEditModal(provider)" class="btn btn-sm btn-outline-secondary border-0">
+                          <i class="ph-duotone ph-pencil-simple"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <hr class="my-4">
-              <h5 class="card-title mb-3">Add New Provider</h5>
-              <form @submit.prevent="addNewProvider" class="p-3 border rounded ">
-                <div class="row g-3 align-items-end">
-                  <div class="col-md-3">
-                    <label class="form-label">Provider Name</label>
-                    <input type="text" v-model="newProviderForm.name" class="form-control" required>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Provider Key</label>
-                    <input type="text" v-model="newProviderForm.providerKey" class="form-control" required placeholder="e.g., dhl">
-                    <div class="form-text">A unique key that matches the provider's filename.</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">API URL</label>
-                    <input type="text" v-model="newProviderForm.apiUrl" class="form-control">
-                  </div>
-                  <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">Add Provider</button>
-                  </div>
-                </div>
-              </form>
             </div>
           </div>
            <!-- Payments Tab -->
@@ -537,6 +508,133 @@
         </div>
       </div>
     </div>
+    <!-- Shipping Provider Edit Modal -->
+    <div class="modal fade" ref="providerModalRef" tabindex="-1" aria-labelledby="providerModalLabel" aria-hidden="true">
+      <!-- UPDATED: Moved v-if to the modal-content div -->
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content" v-if="selectedProvider">
+          <div class="modal-header">
+            <h5 class="modal-title" id="providerModalLabel">Edit {{ selectedProvider.name }}</h5>
+            <button type="button" class="btn-close" @click="closeProviderEditModal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label">Description</label>
+                <input type="text" v-model="selectedProvider.description" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Logo URL</label>
+                <input type="text" v-model="selectedProvider.logoUrl" class="form-control">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Active Environment</label>
+                <select v-model="selectedProvider.activeEnvironment" class="form-select">
+                  <option value="production">Production</option>
+                  <option value="sandbox">Sandbox</option>
+                </select>
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" v-model="selectedProvider.isEnabled" id="providerEnabled">
+                  <label class="form-check-label" for="providerEnabled">Enabled</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Environment Credentials Tabs -->
+            <ul class="nav nav-tabs">
+              <li class="nav-item" v-for="env in selectedProvider.environments" :key="env.name">
+                <a class="nav-link text-capitalize" :class="{ active: activeEnvTab === env.name }" href="#" @click.prevent="activeEnvTab = env.name">{{ env.name }}</a>
+              </li>
+            </ul>
+            <div class="p-3 border border-top-0 rounded-bottom mb-4">
+              <div v-for="env in selectedProvider.environments" :key="env.name">
+                <div v-show="activeEnvTab === env.name">
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">API URL</label>
+                      <input type="text" v-model="env.apiUrl" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">API Key</label>
+                      <input type="password" v-model="env.credentials.apiKey" class="form-control" placeholder="Enter new key to update">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">API Secret</label>
+                      <input type="password" v-model="env.credentials.apiSecret" class="form-control" placeholder="Enter new secret to update">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Customer Code</label>
+                      <input type="text" v-model="env.credentials.customerCode" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Customer Number</label>
+                      <input type="text" v-model="env.credentials.customerNumber" class="form-control">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Rate Card Editor -->
+            <div class="h6">Rate Card</div>
+            <ul class="nav nav-tabs">
+              <li v-for="zone in Object.keys(selectedProvider.rateCard)" :key="zone" class="nav-item">
+                <a class="nav-link" :class="{ active: activeRateCardTab === zone }" href="#" @click.prevent="activeRateCardTab = zone">
+                  {{ zone }}
+                </a>
+              </li>
+            </ul>
+            <div class="p-3 border border-top-0 rounded-bottom">
+              <template v-if="activeRateCardTab && selectedProvider.rateCard[activeRateCardTab]">
+                <table class="table table-sm bg-white">
+                  <thead>
+                    <tr>
+                      <th>Max Weight (g)</th>
+                      <th>Price (€)</th>
+                      <th>Package Name</th>
+                      <th>Service Level</th>
+                      <th>Product Code</th>
+                      <th style="width: 50px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(rate, index) in selectedProvider.rateCard[activeRateCardTab]" :key="index">
+                      <td><input type="number" v-model.number="rate.maxWeight" class="form-control form-control-sm"></td>
+                      <td><input type="number" step="0.01" v-model.number="rate.price" class="form-control form-control-sm"></td>
+                      <td>
+                        <select v-if="rate.isNew" v-model="rate.packageName" class="form-select form-select-sm">
+                          <option v-for="pkg in settingsForm.shippingPackages" :key="pkg.name" :value="pkg.name">
+                            {{ pkg.name }}
+                          </option>
+                        </select>
+                        <input v-else type="text" :value="rate.packageName" class="form-control form-control-sm" disabled readonly>
+                      </td>
+                      <td><input type="text" v-model="rate.serviceLevel" class="form-control form-control-sm"></td>
+                      <td><input type="text" v-model="rate.productCode" class="form-control form-control-sm"></td>
+                      <td>
+                        <button @click="deleteRate(selectedProvider, activeRateCardTab, index)" class="btn btn-sm btn-outline-danger border-0">
+                          <i class="ph-duotone ph-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <button @click="addRate(selectedProvider, activeRateCardTab)" class="btn btn-sm btn-secondary">
+                  <i class="ph-duotone ph-plus me-1"></i> Add Rate to {{ activeRateCardTab }}
+                </button>
+              </template>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="closeProviderEditModal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="saveProviderChanges">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -558,7 +656,12 @@ const loading = reactive({ settings: true, shipping: true, payments: true });
 const shippingProviders = ref([]);
 const paymentProviders = ref([]); 
 const availableOrderStatuses = ref(['created', 'received', 'processing', 'ready for shipment', 'pending payment', 'shipped', 'cancelled']);
-
+// --- State for Provider Editing ---
+const providerModalRef = ref(null);
+let providerModalInstance = null;
+const selectedProvider = ref(null);
+const activeEnvTab = ref('production');
+const activeRateCardTab = ref(null);
 const editPaymentProviderRef = ref(null);
 const editPaymentProviderData = ref(null);
 let editPaymentProviderModalInstance = null;
@@ -633,6 +736,10 @@ const newProviderForm = reactive({
   credentials: { apiKey: '' }
 });
 
+const visibleRateCards = reactive({});
+const toggleRateCardVisibility = (providerId) => {
+  visibleRateCards[providerId] = !visibleRateCards[providerId];
+};
 const removePackage = (index) => {
   settingsForm.shippingPackages.splice(index, 1);
 };
@@ -654,7 +761,12 @@ watch(activeTab, (newTab) => {
 });
 
 const getImageUrl = (filePath) => {
-  if (!filePath) return '';
+  if (!filePath || typeof filePath !== 'string') return '';
+  // If the path is a full URL, return it directly.
+  if (filePath.startsWith('http')) {
+    return filePath;
+  }
+  // Otherwise, construct the full URL from the base API URL.
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   return `${baseUrl.replace('/api', '')}${filePath}`;
 };
@@ -688,21 +800,6 @@ const fetchSettings = async () => {
   }
 };
 
-const fetchShippingProviders = async () => {
-  loading.shipping = true;
-  try {
-    const providersData = await apiClient('/shipping-providers');
-    // Add the rateCardString property for the textarea binding
-    shippingProviders.value = providersData.map(p => ({
-      ...p,
-      rateCardString: JSON.stringify(p.rateCard || {}, null, 2)
-    }));
-  } catch (error) {
-    console.error('Failed to fetch shipping providers:', error);
-  } finally {
-    loading.shipping = false;
-  }
-};
 
 const requestHeaderImage = () => {
   eventBus.emit('open-image-picker', (imagePath) => {
@@ -729,23 +826,69 @@ const saveAllSettings = async () => {
   }
 };
 
-const saveShippingProvider = async (provider) => {
-  const providerToSave = { ...provider };
+const activeProviderTabs = reactive({});
+
+const fetchShippingProviders = async () => {
+  loading.shipping = true;
   try {
-    providerToSave.rateCard = JSON.parse(providerToSave.rateCardString);
-  } catch (e) {
-    addNotification('The rate card contains invalid JSON. Please correct it.', 'failure');
-    return;
+    const providersData = await apiClient('/shipping-providers');
+    
+    // --- NEW: Set the default active tab for each provider ---
+    providersData.forEach(p => {
+      if (p.rateCard && Object.keys(p.rateCard).length > 0) {
+        // Set the first zone as the default active tab
+        activeProviderTabs[p._id] = Object.keys(p.rateCard)[0];
+      }
+    });
+
+    shippingProviders.value = providersData;
+  } catch (error) {
+    console.error('Failed to fetch shipping providers:', error);
+  } finally {
+    loading.shipping = false;
   }
-  delete providerToSave.rateCardString;
+};
+
+const saveShippingProvider = async (provider) => {
+  // REMOVED: No longer need to parse a string. The object is already in the correct format.
+  // The provider object is now directly bound to the input fields.
   try {
     await apiClient(`/shipping-providers/${provider._id}`, {
       method: 'PUT',
-      body: providerToSave
+      body: provider // Send the whole provider object
     });
-     addNotification(`${provider.name} has been updated.`, 'success');
+    addNotification(`${provider.name} has been updated.`, 'success');
   } catch (error) {
     console.error('Failed to save shipping provider:', error);
+    addNotification(`Error saving ${provider.name}.`, 'failure');
+  }
+};
+
+// --- ADD these new helper functions ---
+
+// Function to add a new blank rate to a specific zone
+const addRate = (provider, zone) => {
+  if (provider.rateCard && provider.rateCard[zone]) {
+    // As a default, use the name of the first available shipping package
+    const defaultPackageName = settingsForm.shippingPackages.length > 0
+      ? settingsForm.shippingPackages[0].name
+      // Provide a fallback if no packages are defined
+      : 'Please Define a Package';
+
+    provider.rateCard[zone].push({
+      maxWeight: 0,
+      price: 0.00,
+      packageName: defaultPackageName,
+      serviceLevel: "Tracked",
+      productCode: "",
+      isNew: true // NEW: Flag this rate as newly added for the UI
+    });
+  }
+};
+// Function to delete a rate from a specific zone by its index
+const deleteRate = (provider, zone, index) => {
+  if (provider.rateCard && provider.rateCard[zone]) {
+    provider.rateCard[zone].splice(index, 1);
   }
 };
 
@@ -807,6 +950,40 @@ const addPackage = () => {
     editPackageModalInstance = new window.bootstrap.Modal(editPackageModalRef.value);
   }
   editPackageModalInstance.show();
+};
+const openProviderEditModal = (provider) => {
+  selectedProvider.value = JSON.parse(JSON.stringify(provider));
+  activeEnvTab.value = selectedProvider.value.activeEnvironment || 'production';
+  if (selectedProvider.value.rateCard && Object.keys(selectedProvider.value.rateCard).length > 0) {
+    activeRateCardTab.value = Object.keys(selectedProvider.value.rateCard)[0];
+  } else {
+    activeRateCardTab.value = null;
+  }
+  providerModalInstance?.show();
+};
+
+const closeProviderEditModal = () => {
+  providerModalInstance?.hide();
+  selectedProvider.value = null;
+};
+
+const saveProviderChanges = async () => {
+  if (!selectedProvider.value) return;
+  try {
+    Object.values(selectedProvider.value.rateCard).forEach(zone => {
+      zone.forEach(rate => delete rate.isNew);
+    });
+
+    await apiClient(`/shipping-providers/${selectedProvider.value._id}`, {
+      method: 'PUT',
+      body: selectedProvider.value
+    });
+    addNotification(`${selectedProvider.value.name} updated successfully.`, 'success');
+    closeProviderEditModal();
+    await fetchShippingProviders();
+  } catch (error) {
+    console.error('Failed to save provider:', error);
+  }
 };
 
 const fetchPaymentProviders = async () => {
@@ -880,7 +1057,9 @@ onMounted(() => {
   if (editPaymentProviderRef.value) {
     editPaymentProviderModalInstance = new window.bootstrap.Modal(editPaymentProviderRef.value);
   }
-
+  if (providerModalRef.value) {
+    providerModalInstance = new Modal(providerModalRef.value);
+  }
 });
 </script>
 
