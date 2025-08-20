@@ -165,3 +165,76 @@ The templates use variables (e.g., <%= order.orderNumber %>) to automatically in
 This allows you to customize the communication your customers receive, all without needing to touch any code.
 
 This guide covers the main functions of your shop. We encourage you to explore the admin panel and familiarize yourself with these powerful tools.
+
+### Directory Structure
+````
+admin
+index.html
+�   jsconfig.json
+�   package-lock.json
+�   package.json
+�   readme.md
+�   structure.txt
+�   vite.config.js
+�   webshop_guide.md
+�   
++---public
+�       favicon.ico
+�       
++---src
+    �   App.vue
+    �   main.js
+    �   
+    +---assets
+    �   +---scss
+    �           main.scss
+    �           
+    +---components
+    �   �   ConfirmationDialog.vue
+    �   �   ImagePicker.vue
+    �   �   LabelCreationModal.vue
+    �   �   Notification.vue
+    �   �   OrdersTable.vue
+    �   �   ProductImportModal.vue
+    �   �   StatsCard.vue
+    �   �   TheWelcome.vue
+    �   �   WelcomeItem.vue
+    �   �   
+    �   +---icons
+    �           IconCommunity.vue
+    �           IconDocumentation.vue
+    �           IconEcosystem.vue
+    �           IconSupport.vue
+    �           IconTooling.vue
+    �           
+    +---composables
+    �       useNotifier.js
+    �       
+    +---layouts
+    �       MainLayout.vue
+    �       
+    +---router
+    �       index.js
+    �       
+    +---utils
+    �       apiClient.js
+    �       eventBus.js
+    �       
+    +---views
+        �   AboutView.vue
+        �   CategoriesView.vue
+        �   DashboardView.vue
+        �   emailTemplates.vue
+        �   HomeView.vue
+        �   ImageManagerView.vue
+        �   LoginView.vue
+        �   OrdersView.vue
+        �   ProductsView.vue
+        �   SettingsView.vue
+        �   StoriesView.vue
+        �   UsersView.vue
+        �   _old_OrdersView.vue
+        �   _solid_DashboardView.vue
+        �   
+
+````
