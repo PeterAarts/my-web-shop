@@ -110,3 +110,239 @@ This section provides a brief overview of the key technologies used in the proje
 - vue-router: Handles all client-side routing and navigation between pages.
 - pinia: The official state management library for Vue.js, used for managing the shopping cart and user authentication state.
 - bootstrap: The CSS framework used for styling the user interface.
+
+````
+The directory structure will look like :
+Folder PATH listing for volume Windows
+Volume serial number is 585A-C38A
+C:.
+¦   overzicht.txt
+¦   readme.md
+¦   
++---client
+¦   +---admin
+¦   ¦   ¦   index.html
+¦   ¦   ¦   jsconfig.json
+¦   ¦   ¦   package-lock.json
+¦   ¦   ¦   package.json
+¦   ¦   ¦   readme.md
+¦   ¦   ¦   vite.config.js
+¦   ¦   ¦   webshop_guide.md
+¦   ¦   ¦   
+¦   ¦   +---public
+¦   ¦   ¦       favicon.ico
+¦   ¦   ¦       
+¦   ¦   +---src
+¦   ¦       ¦   App.vue
+¦   ¦       ¦   main.js
+¦   ¦       ¦   
+¦   ¦       +---assets
+¦   ¦       ¦   +---scss
+¦   ¦       ¦           main.scss
+¦   ¦       ¦           
+¦   ¦       +---components
+¦   ¦       ¦   ¦   ConfirmationDialog.vue
+¦   ¦       ¦   ¦   ImagePicker.vue
+¦   ¦       ¦   ¦   LabelCreationModal.vue
+¦   ¦       ¦   ¦   Notification.vue
+¦   ¦       ¦   ¦   OrdersTable.vue
+¦   ¦       ¦   ¦   ProductImportModal.vue
+¦   ¦       ¦   ¦   StatsCard.vue
+¦   ¦       ¦   ¦   TheWelcome.vue
+¦   ¦       ¦   ¦   WelcomeItem.vue
+¦   ¦       ¦   ¦   
+¦   ¦       ¦   +---icons
+¦   ¦       ¦           IconCommunity.vue
+¦   ¦       ¦           IconDocumentation.vue
+¦   ¦       ¦           IconEcosystem.vue
+¦   ¦       ¦           IconSupport.vue
+¦   ¦       ¦           IconTooling.vue
+¦   ¦       ¦           
+¦   ¦       +---composables
+¦   ¦       ¦       useNotifier.js
+¦   ¦       ¦       
+¦   ¦       +---layouts
+¦   ¦       ¦       MainLayout.vue
+¦   ¦       ¦       
+¦   ¦       +---router
+¦   ¦       ¦       index.js
+¦   ¦       ¦       
+¦   ¦       +---utils
+¦   ¦       ¦       apiClient.js
+¦   ¦       ¦       eventBus.js
+¦   ¦       ¦       
+¦   ¦       +---views
+¦   ¦           ¦   AboutView.vue
+¦   ¦           ¦   CategoriesView.vue
+¦   ¦           ¦   DashboardView.vue
+¦   ¦           ¦   emailTemplates.vue
+¦   ¦           ¦   HomeView.vue
+¦   ¦           ¦   ImageManagerView.vue
+¦   ¦           ¦   LoginView.vue
+¦   ¦           ¦   OrdersView.vue
+¦   ¦           ¦   ProductsView.vue
+¦   ¦           ¦   SettingsView.vue
+¦   ¦           ¦   StoriesView.vue
+¦   ¦           ¦   UsersView.vue
+¦   ¦           ¦   _old_OrdersView.vue
+¦   ¦           ¦   _solid_DashboardView.vue
+¦   ¦           ¦   
+¦   ¦           +---backup
+¦   ¦                   SettingsView copy.vue
+¦   ¦                   SettingsView.vue
+¦   ¦                   
+¦   +---shop
+¦       ¦   index.html
+¦       ¦   jsconfig.json
+¦       ¦   package-lock.json
+¦       ¦   package.json
+¦       ¦   readme.md
+¦       ¦   vite.config.js
+¦       ¦   
+¦       +---public
+¦       ¦       favicon.ico
+¦       ¦       
+¦       +---src
+¦           ¦   App.vue
+¦           ¦   App_test.vue
+¦           ¦   main.js
+¦           ¦   
+¦           +---assets
+¦           ¦   ¦   __base.css
+¦           ¦   ¦   __main.css
+¦           ¦   ¦   
+¦           ¦   +---scss
+¦           ¦           main.scss
+¦           ¦           
+¦           +---components
+¦           ¦   ¦   CartDropdown.vue
+¦           ¦   ¦   ConfirmationModal.vue
+¦           ¦   ¦   LoginRegisterModal.vue
+¦           ¦   ¦   Pagination.vue
+¦           ¦   ¦   ProductCard.vue
+¦           ¦   ¦   ProductFilters.vue
+¦           ¦   ¦   StoryList.vue
+¦           ¦   ¦   UserDropdown.vue
+¦           ¦   ¦   WelcomeItem.vue
+¦           ¦   ¦   
+¦           ¦   +---icons
+¦           ¦           IconCommunity.vue
+¦           ¦           IconDocumentation.vue
+¦           ¦           IconEcosystem.vue
+¦           ¦           IconSupport.vue
+¦           ¦           IconTooling.vue
+¦           ¦           
+¦           +---composables
+¦           ¦       useConfirm.js
+¦           ¦       
+¦           +---data
+¦           ¦       countries.js
+¦           ¦       
+¦           +---layouts
+¦           ¦       ShopLayout.vue
+¦           ¦       
+¦           +---router
+¦           ¦       index.js
+¦           ¦       
+¦           +---store
+¦           ¦       authStore.js
+¦           ¦       cartStore.js
+¦           ¦       cartStore_oud.js
+¦           ¦       products.js
+¦           ¦       themeStore.js
+¦           ¦       
+¦           +---utils
+¦           ¦       apiClient.js
+¦           ¦       scriptLoader.js
+¦           ¦       
+¦           +---views
+¦                   AboutView.vue
+¦                   AccountView.vue
+¦                   CartView.vue
+¦                   CheckoutView.vue
+¦                   HomeView.vue
+¦                   LoginRegisterView.vue
+¦                   OrderConfirmationView.vue
+¦                   ProductDetailView.vue
+¦                   resetPasswordView.vue
+¦                   ShopView.vue
+¦                   VerifyEmail.vue
+¦                   
++---server
+    ¦   .env_example
+    ¦   countries.csv
+    ¦   package-lock.json
+    ¦   package.json
+    ¦   readme.md
+    ¦   server.js
+    ¦   swagger.json
+    ¦   
+    +---config
+    ¦       postnl-rates.json
+    ¦       
+    +---middleware
+    ¦       authGuestMiddleware.js
+    ¦       authMiddleware.js
+    ¦       authOptional.js
+    ¦       
+    +---models
+    ¦       Cart.js
+    ¦       Category.js
+    ¦       EmailStatusLog.js
+    ¦       EmailTemplate.js
+    ¦       Order.js
+    ¦       paymentProvider.js
+    ¦       Product.js
+    ¦       Setting.js
+    ¦       ShippingProvider.js
+    ¦       StoryItem.js
+    ¦       User.js
+    ¦       
+    +---payment-providers
+    ¦       banktransfer.js
+    ¦       paypal.js
+    ¦       stripe.js
+    ¦       
+    +---public
+    ¦   +---assets
+    ¦   ¦       postnl-logo.png
+    ¦   ¦       
+    ¦   +---uploads
+    ¦           
+    +---routes
+    ¦       authRoutes.js
+    ¦       cartRoutes.js
+    ¦       categoryRoutes.js
+    ¦       dashboardRoutes.js
+    ¦       emailTemplateRoutes.js
+    ¦       imageRoutes.js
+    ¦       logRoutes.js
+    ¦       orderRoutes.js
+    ¦       paymentProviderRoutes.js
+    ¦       paymentRoutes.js
+    ¦       productRoutes.js
+    ¦       settingsRoutes.js
+    ¦       shippingProviderRoutes.js
+    ¦       shippingRoutes.js
+    ¦       storyItemRoutes.js
+    ¦       uploadRoutes.js
+    ¦       userRoutes.js
+    ¦       
+    +---services
+    ¦       orderStatusService.js
+    ¦       paymentSyncService.js
+    ¦       pickListService.js
+    ¦       shippingSyncService.js
+    ¦       templateEmailService.js
+    ¦       
+    +---shipping-providers
+    ¦       dhl.js
+    ¦       dpd.js
+    ¦       postnl.js
+    ¦       
+    +---utils
+            emailService.js
+            shippingLogger.js
+            
+
+````
