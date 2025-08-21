@@ -108,9 +108,54 @@ Your shop sends automatic emails to customers at key moments. In the E-mail temp
 
 - You can change the Subject and Body (HTML) of templates like "Order Confirmation" and "Order Shipped".
 - The templates use variables (e.g., `<%= order.orderNumber %>`) to automatically insert the correct customer and order details.
+- [Cheatsheet for EJS-templates](https://quickref.me/ejs.html)
+
+### following codes can be used within the templates
+---
+**Algemene ordergegevens**
+- order.orderNumber
+- order.totalAmount
+- order.status
+- order.reservationExpiresAt
+- order.picklistFilename
+- order.active
+- order.createdAt
+- order.updatedAt
+---
+**Klantgegevens** (customerDetails)
+- order.customerDetails.name
+- order.customerDetails.email
+- order.customerDetails.address
+---
+**Gebruiker** (optioneel)
+- order.user (ObjectId van de gebruiker, referentie naar User model)
+---
+**Orderitems** (items)
+Voor elk item in order.items:
+- item.productId (ObjectId, referentie naar Product model)
+- item.name
+- item.price
+- item.quantity
+---
+**Betalingsgegevens** (paymentDetails)
+- order.paymentDetails.paymentMethod
+- order.paymentDetails.paymentStatus (mogelijk: pending, paid, rejected, refunded)
+- order.paymentDetails.paymentDate
+- order.paymentDetails.paymentTransactionId
+---
+**Verzendgegevens** (shippingDetails)
+- order.shippingDetails.shippingMethodId
+- order.shippingDetails.provider
+- order.shippingDetails.trackingNumber
+- order.shippingDetails.labelUrl
+- order.shippingDetails.labelFormat
+- order.shippingDetails.shippingMethodName
+- order.shippingDetails.shippingCost 
+---
 
 This allows you to customize the communication your customers receive, all without needing to touch any code.
 
 ---
 
 This guide covers the main functions of your shop. We encourage you to explore the admin panel and familiarize yourself with these powerful tools.
+
