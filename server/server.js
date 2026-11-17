@@ -12,6 +12,7 @@ const shippingRoutes = require('./routes/shippingRoutes');
 
 // --- UPDATED: Swagger/OpenAPI Documentation ---
 const swaggerUi = require('swagger-ui-express');
+
 // We now require the JSON file directly.
 const swaggerDocument = require('./swagger.json'); 
 // --- END UPDATE ---
