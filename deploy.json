@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "description": "Webshop rippelspaperlover.com: shop only, LAN and VPN only for now (admin follows later)",
+  "type": "node-vue",
+  "access": "lan",
+  "domain": "rippelspaperlover.com",
+  "serverDir": "server",
+  "entry": "server.js",
+  "frontendDir": "client/shop",
+  "apiPaths": ["/api", "/uploads"],
+  "env": {
+    "HOST": "127.0.0.1",
+    "MONGODB_URI": "",
+    "JWT_SECRET": "",
+    "CORS_ORIGINS": "https://rippelspaperlover.com",
+    "VUE_APP_URL": "https://rippelspaperlover.com",
+    "UPLOAD_DIR": "{dataDir}/uploads",
+    "LABELS_DIR": "{dataDir}/labels",
+    "PICKLIST_DIR": "{dataDir}/picklists"
+  }
+}
