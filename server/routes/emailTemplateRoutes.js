@@ -3,18 +3,10 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const EmailTemplate = require('../models/EmailTemplate');
 
 
-// Middleware to check for admin role
-const adminAuth = (req, res, next) => {
-    // Ensure req.user is populated by the 'auth' middleware first
-    if (req.user && req.user.role === 'admin') {
-        next();
-    } else {
-        return res.status(403).json({ msg: 'Admin access required' });
-    }
-};
 
 // Define the list of slugs that are hardcoded in the application logic.
 const requiredSystemSlugs = [
@@ -30,14 +22,14 @@ const requiredSystemSlugs = [
 // @route   GET api/email-templates/system-slugs
 // @desc    Get a list of required system email template slugs
 // @access  Admin
-router.get('/system-slugs', auth, adminAuth, (req, res) => {
+router.get('/system-slugs', auth, requireAdmin, (req, res) => {
     res.json(requiredSystemSlugs);
 });
 
 // @route   GET api/email-templates
 // @desc    Get all email templates
 // @access  Admin
-router.get('/', auth, adminAuth, async (req, res) => {
+router.get('/', auth, requireAdmin, async (req, res) => {
     try {
         const templates = await EmailTemplate.find().sort({ name: 1 });
         res.json(templates);
@@ -50,7 +42,7 @@ router.get('/', auth, adminAuth, async (req, res) => {
 // @route   POST api/email-templates
 // @desc    Create a new email template
 // @access  Admin
-router.post('/', auth, adminAuth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
     const { name, slug, subject, body } = req.body;
 
     if (!name || !slug || !subject || !body) {
@@ -83,7 +75,7 @@ router.post('/', auth, adminAuth, async (req, res) => {
 // @route   PUT api/email-templates/:id
 // @desc    Update an existing email template
 // @access  Admin
-router.put('/:id', auth, adminAuth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
     const { name, slug, subject, body, isActive } = req.body;
 
     try {
@@ -122,7 +114,7 @@ router.put('/:id', auth, adminAuth, async (req, res) => {
 // @route   DELETE api/email-templates/:id
 // @desc    Delete an email template
 // @access  Admin
-router.delete('/:id', auth, adminAuth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
     try {
         const template = await EmailTemplate.findById(req.params.id);
         if (!template) {

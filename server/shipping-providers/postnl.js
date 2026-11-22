@@ -1,6 +1,6 @@
 // FILE: server/shipping-providers/postnl.js
 
-const axios = require('axios');
+// Uses Node's built-in fetch (axios was used here but is not installed by npm ci).
 const Setting = require('../models/Setting');
 //const { version } = require('pdfkit');
 
@@ -134,14 +134,23 @@ const createLabel = async (order, productCode, providerConfig) => {
   try {
     console.log(`Sending label request to PostNL (${activeEnv.name}) for order: ${order.orderNumber}`);
     // UPDATED: Use the apiUrl and apiKey from the active environment
-    const response = await axios.post(activeEnv.apiUrl, apiRequestData, {
+    const response = await fetch(activeEnv.apiUrl, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': activeEnv.credentials.apiKey
-      }
+      },
+      body: JSON.stringify(apiRequestData),
+      signal: AbortSignal.timeout(30000),
     });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const e = new Error(`HTTP ${response.status}`);
+      e.response = { data };
+      throw e;
+    }
 
-    const shipmentResponse = response.data.ResponseShipments[0];
+    const shipmentResponse = data.ResponseShipments?.[0];
     if (shipmentResponse && shipmentResponse.Labels && shipmentResponse.Barcode) {
       return {
         labelData: shipmentResponse.Labels[0].Content,
@@ -212,4 +221,4 @@ module.exports = {
   defaultConfig, // Export the default config
   getRates,
   createLabel
-};
+};

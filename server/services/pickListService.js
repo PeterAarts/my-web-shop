@@ -2,7 +2,20 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const Setting = require('../models/Setting');
-const { print } = require('pdf-to-printer'); // NEW: Import the printing utility
+const { PICKLIST_DIR } = require('../lib/paths');
+
+// Printing is optional and Windows-only (pdf-to-printer drives a Windows printer).
+// Turn it on with PRINT_PICKLISTS=true in .env on a Windows machine that has the
+// package installed (npm install pdf-to-printer). Elsewhere the PDF is only saved.
+function sendToPrinter(filePath, filename) {
+  if (process.env.PRINT_PICKLISTS !== 'true') return;
+  let print;
+  try { ({ print } = require('pdf-to-printer')); }
+  catch { console.error('❌  PRINT_PICKLISTS is on, but pdf-to-printer is not installed.'); return; }
+  print(filePath, {})
+    .then(() => console.log(`🖨️  Successfully sent ${filename} to the printer.`))
+    .catch((err) => console.error('❌  Error sending file to printer:', err));
+}
 
 /**
  * Generates a PDF picklist from an order, saves it to a PRIVATE directory,
@@ -16,8 +29,7 @@ const generateAndSavePickList = async (order) => {
     const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
     const filename = `PickList-${order.orderNumber}-${timestamp}.pdf`;
     
-    const picklistDir = path.join(__dirname, '..', 'storage', 'picklists');
-    fs.mkdirSync(picklistDir, { recursive: true });
+    const picklistDir = PICKLIST_DIR;
     
     const filePath = path.join(picklistDir, filename);
 
@@ -85,21 +97,8 @@ const generateAndSavePickList = async (order) => {
     stream.on('finish', () => {
       console.log(`✅ Picklist securely generated: ${filename}`);
       
-      // --- NEW: Automatically print the generated PDF ---
-      const options = {
-        // Optional: specify a printer name if you don't want to use the default
-        // printer: "MyWarehousePrinter" 
-      };
-
-      print(filePath, options)
-        .then(() => {
-          console.log(`🖨️  Successfully sent ${filename} to the printer.`);
-        })
-        .catch((err) => {
-          // Log the error, but don't stop the process. The file is still saved.
-          console.error('❌  Error sending file to printer:', err);
-        });
-      // --- END NEW SECTION ---
+      // Print it if PRINT_PICKLISTS=true (Windows only); the file is saved either way
+      sendToPrinter(filePath, filename);
 
       resolve(filename);
     });

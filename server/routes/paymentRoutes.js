@@ -5,7 +5,7 @@ const router = express.Router();
 const crypto = require('crypto'); // NEW: Import crypto for token generation
 const PaymentProvider = require('../models/PaymentProvider');
 const authOptional = require('../middleware/authOptional');
-const auth = require('../middleware/authMiddleware');
+const { priceOrder, takeStock, giveBackStock } = require('../services/orderPricingService');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Setting = require('../models/Setting');
@@ -74,113 +74,129 @@ router.get('/options', authOptional, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+// The provider module for a payment method name, or null. (Object.hasOwn: a name like
+// "constructor" must not match something built into every JavaScript object.)
+const providerFor = name => (typeof name === 'string' && Object.hasOwn(providers, name) ? providers[name] : null);
+
+// Errors from priceOrder/takeStock carry a status and details for the checkout page.
+function sendOrderError(res, error) {
+  if (error.status === 400) {
+    return res.status(400).json({ msg: error.message, outOfStockItems: error.outOfStockItems, priceChanged: error.priceChanged });
+  }
+  console.error('Order error:', error);
+  res.status(500).json({ msg: 'Something went wrong while placing your order. Please try again.' });
+}
+
 // @route   POST api/payment/initiate
-// @desc    Initiates the payment process for any given method.
-// @access  Private
+// @desc    Starts the payment for an order. Prices are calculated by the server.
+// @access  Public (guests and logged-in customers)
 router.post('/initiate', authOptional, async (req, res) =>  {
     const { paymentMethod, orderDetails } = req.body;
 
     try {
-        await verifyStock(orderDetails.items);
-        const providerModule = providers[paymentMethod];
+        const providerModule = providerFor(paymentMethod);
         if (!providerModule) {
             return res.status(400).json({ msg: 'Invalid payment method.' });
         }
+        const providerConfig = await PaymentProvider.findOne({ moduleName: paymentMethod });
+        if (!providerConfig || !providerConfig.isEnabled) {
+            return res.status(400).json({ msg: 'This payment method is not available.' });
+        }
+        if (providerConfig.requiresRegistration && !req.user) {
+            return res.status(403).json({ msg: 'Please log in to use this payment method.' });
+        }
+
+        const priced = await priceOrder(orderDetails);
 
         if (!providerModule.isOnline) {
-            // MODIFIED: Construct a paymentDetails object for the helper function
-            const paymentDetails = {
-                paymentMethod: paymentMethod,
-                paymentStatus: 'pending',
-                paymentDate: new Date()
-            };
-            const { finalOrder, viewToken } = await placeFinalOrder(orderDetails, req.user?.id, paymentDetails);
+            const paymentDetails = { paymentMethod, paymentStatus: 'pending', paymentDate: new Date() };
+            const { finalOrder, viewToken } = await placeFinalOrder(priced, req.user?.id, paymentDetails);
             return res.json({ success: true, order: finalOrder, action: 'confirm', viewToken: viewToken });
         }
-        
+
         if (providerModule.initiate) {
-            const providerConfig = await PaymentProvider.findOne({ moduleName: paymentMethod });
-            if (!providerConfig || !providerConfig.isEnabled) {
-                return res.status(400).json({ msg: `${providerConfig.name} is not available.` });
-            }
-            const result = await providerModule.initiate(orderDetails, providerConfig);
+            // The provider is asked to collect the server's total, not the browser's.
+            const result = await providerModule.initiate(priced, providerConfig);
             return res.json({ success: true, ...result });
         }
 
         res.status(400).json({ msg: 'This payment method cannot be initiated.' });
 
     } catch (error) {
-        res.status(error.outOfStockItems ? 400 : 500).json({
-            msg: error.message,
-            outOfStockItems: error.outOfStockItems
-        });
+        sendOrderError(res, error);
     }
 });
 
 // @route   POST api/payment/capture
-// @desc    Captures the payment after online approval (e.g., from PayPal)
-// @access  Private
-router.post('/capture', auth, async (req, res) => {
+// @desc    Completes a PayPal payment after the customer approved it, then places the order.
+// @access  Public (guests and logged-in customers; guests can pay with PayPal too)
+router.post('/capture', authOptional, async (req, res) => {
     const { paymentMethod, paymentDetails, orderDetails } = req.body;
+    if (paymentMethod !== 'paypal') {
+        return res.status(400).json({ msg: 'Invalid payment method for capture.' });
+    }
+    const paypalOrderId = paymentDetails?.paymentTransactionId;
+    if (typeof paypalOrderId !== 'string' || !/^[A-Za-z0-9-]{5,64}$/.test(paypalOrderId)) {
+        return res.status(400).json({ msg: 'Invalid PayPal payment.' });
+    }
 
-    if (paymentMethod === 'paypal') {
-        try {
-            const paypalProvider = providers['paypal'];
-            const paypalConfig = await PaymentProvider.findOne({ moduleName: 'paypal' });
-            if (!paypalProvider || !paypalConfig) throw new Error('PayPal provider not configured.');
-
-            const captureData = await paypalProvider.captureOrder(paymentDetails.paymentTransactionId, paypalConfig);
-            if (captureData.status !== 'COMPLETED') {
-                return res.status(400).json({ msg: 'PayPal payment could not be completed.' });
-            }
-
-            // MODIFIED: Pass the detailed paymentDetails object directly to the helper
-            const { finalOrder, viewToken } = await placeFinalOrder(orderDetails, req.user.id, paymentDetails);
-            res.json({ success: true, order: finalOrder, viewToken: viewToken });
-
-        } catch (error) {
-            console.error(error.message);
-            res.status(500).json({ msg: 'Error capturing payment.' });
+    try {
+        const paypalProvider = providerFor('paypal');
+        const paypalConfig = await PaymentProvider.findOne({ moduleName: 'paypal' });
+        if (!paypalProvider || !paypalConfig || !paypalConfig.isEnabled) {
+            return res.status(400).json({ msg: 'PayPal is not available.' });
         }
-    } else {
-        res.status(400).json({ msg: 'Invalid payment method for capture.' });
+
+        // One PayPal payment pays for one order.
+        if (await Order.exists({ 'paymentDetails.paymentTransactionId': paypalOrderId })) {
+            return res.status(409).json({ msg: 'This payment was already used for an order.' });
+        }
+
+        const priced = await priceOrder(orderDetails);
+
+        const captureData = await paypalProvider.captureOrder(paypalOrderId, paypalConfig);
+        if (captureData.status !== 'COMPLETED') {
+            return res.status(400).json({ msg: 'PayPal payment could not be completed.' });
+        }
+
+        // What PayPal actually received must be the order's total.
+        const capture = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        const paid = Number(capture?.amount?.value);
+        const currency = capture?.amount?.currency_code;
+        if (currency !== 'EUR' || !Number.isFinite(paid) || Math.abs(paid - priced.totalAmount) > 0.005) {
+            console.error(`[PayPal] AMOUNT MISMATCH for PayPal order ${paypalOrderId}: received ${paid} ${currency}, ` +
+                          `order total ${priced.totalAmount} EUR. No order placed; refund this payment in PayPal.`);
+            return res.status(400).json({ msg: 'The amount paid does not match your order. Please contact us; we will refund the payment.' });
+        }
+
+        const { finalOrder, viewToken } = await placeFinalOrder(priced, req.user?.id, {
+            paymentMethod: 'paypal',
+            paymentStatus: 'paid',
+            paymentDate: new Date(),
+            paymentTransactionId: paypalOrderId,
+        });
+        res.json({ success: true, order: finalOrder, viewToken: viewToken });
+
+    } catch (error) {
+        if (error.status === 400) return sendOrderError(res, error);
+        console.error(error.message);
+        res.status(500).json({ msg: 'Error capturing payment.' });
     }
 });
 
 
 // --- HELPER FUNCTIONS ---
 
-async function verifyStock(items) {
-    const productIds = items.map(item => item.productId);
-    const productsInCart = await Product.find({ '_id': { $in: productIds } });
-    const productMap = new Map(productsInCart.map(p => [p._id.toString(), p]));
-    
-    const outOfStockItems = [];
-    for (const item of items) {
-        const product = productMap.get(item.productId.toString());
-        if (!product || product.stock < item.quantity) {
-            outOfStockItems.push({
-                name: product ? product.name : 'Unknown Product',
-                requested: item.quantity,
-                available: product ? product.stock : 0,
-            });
-        }
-    }
-    if (outOfStockItems.length > 0) {
-        const error = new Error('One or more items are out of stock.');
-        error.outOfStockItems = outOfStockItems;
-        throw error;
-    }
-}
-
-async function placeFinalOrder(orderDetails, userId, paymentDetails) {
+// Places an order from a priced cart (see services/orderPricingService.js).
+// Stock is taken first, all or nothing; if saving the order fails, it is given back.
+async function placeFinalOrder(priced, userId, paymentDetails) {
     const orderData = {
-      orderNumber: `ORD-${Date.now()}`,
+      orderNumber: `ORD-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
       user: userId,
-      customerDetails: orderDetails.customerDetails,
-      items: orderDetails.items,
-      totalAmount: orderDetails.totalAmount,
-      shippingDetails: orderDetails.shippingDetails,
+      customerDetails: priced.customerDetails,
+      items: priced.items,
+      totalAmount: priced.totalAmount,
+      shippingDetails: priced.shippingDetails,
       paymentDetails: paymentDetails,
       status: 'received' // Default status for a confirmed order
     };
@@ -191,20 +207,18 @@ async function placeFinalOrder(orderDetails, userId, paymentDetails) {
         const now = new Date();
         orderData.reservationExpiresAt = new Date(now.setDate(now.getDate() + reservationDays));
     }
-    // NEW: Generate and add the secure view token
+    // A secure token so a guest can view their order confirmation for one hour
     const token = crypto.randomBytes(32).toString('hex');
     orderData.viewToken = token;
-    orderData.viewTokenExpires = Date.now() + 3600000; // Token expires in 1 hour
+    orderData.viewTokenExpires = Date.now() + 3600000;
 
-    const newOrder = new Order(orderData);
-    const savedOrder = await newOrder.save();
-    
-    // Stock adjustment logic with corrected field name
-    // This now runs for ALL orders created via this function (PayPal and Bank Transfer)
-    for (const item of savedOrder.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stockQuantity: -item.quantity }
-      });
+    await takeStock(priced.items);
+    let savedOrder;
+    try {
+        savedOrder = await new Order(orderData).save();
+    } catch (err) {
+        await giveBackStock(priced.items);
+        throw err;
     }
 
         // the email sending logic here ---
@@ -227,9 +241,9 @@ async function placeFinalOrder(orderDetails, userId, paymentDetails) {
     
     try {
         const user = await User.findById(userId);
-        if (user && !user.shippingAddress?.street && orderDetails.structuredAddress) {
+        if (user && !user.shippingAddress?.street && priced.structuredAddress) {
             await User.findByIdAndUpdate(userId, {
-                $set: { shippingAddress: orderDetails.structuredAddress }
+                $set: { shippingAddress: priced.structuredAddress }
             });
         }
     } catch (error) {
@@ -240,4 +254,4 @@ async function placeFinalOrder(orderDetails, userId, paymentDetails) {
     return { finalOrder: savedOrder, viewToken: token };
 }
 
-module.exports = router;
+module.exports = router;

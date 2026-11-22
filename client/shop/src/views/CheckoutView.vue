@@ -342,20 +342,18 @@ const renderPayPalButtons = async (paypalOrderID, orderDetails) => {
     paypal.Buttons({
       createOrder: (data, actions) => paypalOrderID,
       onApprove: async (data, actions) => {
-        const capturedPaymentDetails = {
-          paymentMethod: 'PayPal',
-          paymentStatus: 'paid',
-          paymentDate: new Date().toISOString(),
-          paymentTransactionId: data.orderID,
-        };
+        // The server checks the payment with PayPal itself and recalculates the order,
+        // so we only tell it which PayPal payment and which order this is.
+        const headers = { 'Content-Type': 'application/json' };
+        if (authStore.token) headers['Authorization'] = `Bearer ${authStore.token}`;
 
         const response = await fetch(`${apiUrl}/payment/capture`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
-            paymentModule: 'paypal',
-            paymentDetails: capturedPaymentDetails, // Send the single, final details object
-            orderDetails: { /* ... original orderDetails ... */ }
+            paymentMethod: 'paypal',
+            paymentDetails: { paymentTransactionId: data.orderID },
+            orderDetails,   // the same order details that started this payment
           })
         });
         const result = await response.json();
@@ -420,4 +418,4 @@ onMounted(() => {
 .accordion-button:focus {
   box-shadow: none;
 }
-</style>
+</style>

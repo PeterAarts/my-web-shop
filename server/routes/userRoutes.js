@@ -2,6 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { text, passwordProblem, isEmail } = require('../lib/validate');
+
+// True if this user is the only admin left: removing or demoting them would lock
+// everyone out of the admin site.
+async function isLastAdmin(user) {
+  return user.role === 'admin' && (await User.countDocuments({ role: 'admin' })) <= 1;
+}
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
@@ -61,8 +69,11 @@ router.put('/me/password', auth, async (req, res) => {
         const user = await User.findById(req.user.id).select('+password');
         if (!user) return res.status(404).json({ msg: 'User not found' });
 
+        if (!text(currentPassword, 200)) return res.status(400).json({ msg: 'Incorrect current password.' });
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) return res.status(400).json({ msg: 'Incorrect current password.' });
+        const pwProblem = passwordProblem(newPassword);
+        if (pwProblem) return res.status(400).json({ msg: pwProblem });
 
         user.password = newPassword;
         await user.save();
@@ -80,6 +91,9 @@ router.delete('/me', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
+        if (await isLastAdmin(user)) {
+            return res.status(400).json({ msg: 'This is the last admin account. Make someone else admin first.' });
+        }
         
         await user.deleteOne();
         res.json({ msg: 'Your account has been permanently deleted.' });
@@ -92,18 +106,11 @@ router.delete('/me', auth, async (req, res) => {
 
 // --- ADMIN-ONLY ROUTES ---
 
-// Middleware to check if the user is an admin
-const adminAuth = (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ msg: 'Access denied. Admins only.' });
-    }
-    next();
-};
 
 // @route   GET api/users
 // @desc    Get all users (Admin)
 // @access  Admin
-router.get('/', auth, adminAuth, async (req, res) => {
+router.get('/', auth, requireAdmin, async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ username: 1 });
     res.json(users);
@@ -116,8 +123,12 @@ router.get('/', auth, adminAuth, async (req, res) => {
 // @route   POST api/users
 // @desc    Create a new user (Admin)
 // @access  Admin
-router.post('/', auth, adminAuth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   const { username, email, password, role } = req.body;
+  if (!text(username, 50) || !isEmail(email)) return res.status(400).json({ msg: 'A username and a valid email address are required.' });
+  if (!['customer', 'reviewer', 'admin'].includes(role)) return res.status(400).json({ msg: 'Unknown role.' });
+  const pwProblem = passwordProblem(password);
+  if (pwProblem) return res.status(400).json({ msg: pwProblem });
   try {
     let user = await User.findOne({ email });
     if (user) {
@@ -135,11 +146,19 @@ router.post('/', auth, adminAuth, async (req, res) => {
 // @route   PUT api/users/:id
 // @desc    Update a user's role or password (Admin)
 // @access  Admin
-router.put('/:id', auth, adminAuth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   const { role, newPassword } = req.body;
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: 'User not found.' });
+    if (role && !['customer', 'reviewer', 'admin'].includes(role)) return res.status(400).json({ msg: 'Unknown role.' });
+    if (role && user.role === 'admin' && role !== 'admin' && await isLastAdmin(user)) {
+      return res.status(400).json({ msg: 'This is the last admin. Make someone else admin first.' });
+    }
+    if (newPassword) {
+      const pwProblem = passwordProblem(newPassword);
+      if (pwProblem) return res.status(400).json({ msg: pwProblem });
+    }
     if (role) user.role = role;
     if (newPassword) user.password = newPassword;
     await user.save({ validateModifiedOnly: true });
@@ -153,7 +172,7 @@ router.put('/:id', auth, adminAuth, async (req, res) => {
 // @route   DELETE api/users/:id
 // @desc    Delete a user (Admin)
 // @access  Admin
-router.delete('/:id', auth, adminAuth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -168,4 +187,4 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;

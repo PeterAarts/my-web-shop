@@ -40,4 +40,4 @@ const PaymentProviderSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('PaymentProvider', PaymentProviderSchema);
+module.exports = mongoose.model('PaymentProvider', PaymentProviderSchema);

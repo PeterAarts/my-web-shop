@@ -5,15 +5,16 @@ const path = require('path');
 const sharp = require('sharp');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 
 const Product = require('../models/Product');
 const StoryItem = require('../models/StoryItem');
 const Settings = require('../models/Setting'); 
 
-const uploadsDirectory = path.join(__dirname, '..', 'public', 'uploads');
+const { UPLOAD_DIR: uploadsDirectory } = require('../lib/paths');
 
 // GET /api/images - Get all images with details
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireStaff, async (req, res) => {
   try {
     const files = await fs.promises.readdir(uploadsDirectory);
     const imageDetailsPromises = files.map(async (fileName) => {
@@ -46,7 +47,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // GET /api/images/usage/:filename - Find where an image is used
-router.get('/usage/:filename', auth, async (req, res) => {
+router.get('/usage/:filename', auth, requireStaff, async (req, res) => {
   try {
     const filename = path.basename(req.params.filename);
     const imagePath = `/uploads/${filename}`;
@@ -82,7 +83,7 @@ router.get('/usage/:filename', auth, async (req, res) => {
 // @route   DELETE /api/images/:filename
 // @desc    Delete an image from the server
 // @access  Protected
-router.delete('/:filename', auth, async (req, res) => {
+router.delete('/:filename', auth, requireAdmin, async (req, res) => {
   const filename = path.basename(req.params.filename);
   const filePath = path.join(uploadsDirectory, filename);
   let retries = 5;

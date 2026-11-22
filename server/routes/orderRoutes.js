@@ -3,6 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff, currentRole, isStaffRole } = require('../middleware/requireRole');
+const { PICKLIST_DIR } = require('../lib/paths');
 const Order = require('../models/Order');
 const Setting = require('../models/Setting');
 const Product = require('../models/Product');
@@ -36,7 +38,7 @@ router.get('/my-orders', auth, async (req, res) => {
 // @route   GET api/orders
 // @desc    Get all orders for admin (defaults to active)
 // @access  Private
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireStaff, async (req, res) => {
   try {
     const filter = { active: true };
     if (req.query.active === 'false') {
@@ -65,7 +67,9 @@ router.get('/:id', auth, async (req, res) => {
     if (!order) {
       return res.status(404).json({ msg: 'Order not found' });
     }
-    if (req.user.role !== 'admin' && order.user.toString() !== req.user.id) {
+    const role = await currentRole(req);
+    const ownerId = order.user && (order.user._id || order.user).toString();
+    if (!isStaffRole(role) && ownerId !== req.user.id) {
       return res.status(403).json({ msg: 'Not authorized to view this order' });
     }
     res.json(order);
@@ -143,8 +147,8 @@ router.get('/confirmation/:id', auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
-    // Security check: must be admin or the user who owns the order
-    if (!order || (req.user.role !== 'admin' && order.user?.toString() !== req.user.id)) {
+    // Security check: must be staff or the user who owns the order
+    if (!order || (!isStaffRole(await currentRole(req)) && order.user?.toString() !== req.user.id)) {
       return res.status(403).json({ msg: 'Not authorized to view this order confirmation' });
     }
 
@@ -165,59 +169,14 @@ router.get('/confirmation/:id', auth, async (req, res) => {
   }
 });
 
-// @route   POST /api/orders
-// @desc    Create a new order directly
-// @access  Protected
-router.post('/', auth, async (req, res) => {
-  try {
-    const newOrderData = new Order({
-      orderNumber: `ORD-${Date.now()}`,
-      user: req.user.id,
-      shippingDetails: {
-        shippingMethodId: selectedShipping.id, // Make sure you pass this from the frontend
-        shippingMethodName: selectedShipping.name,
-        shippingCost: selectedShipping.price
-      },
-      paymentHistory: [{
-        paymentMethod: paymentMethodModuleName, // e.g., 'banktransfer' or 'paypal'
-        paymentStatus: 'pending', // Initial status
-        paymentDate: new Date(),
-        paymentComments: 'Order created.'
-      }],
-      ...req.body
-    });
-    const newOrder = await newOrderData.save();
-    await OrderStatusLog.create({
-        orderId: newOrder._id,
-        orderNumber: newOrder.orderNumber,
-        changedBy: req.user.id, // The logged-in admin's ID
-        oldStatus: null,
-        newStatus: newOrder.status,
-    });
-
-
-
-    const fullOrderDetails = await Order.findById(newOrder._id).populate('user', 'name email');
-    const settings = await Setting.findOne();
-
-    if (fullOrderDetails.status === 'pending payment') {
-      sendOrderConfirmationEmail(fullOrderDetails);
-      sendPendingPaymentEmail(fullOrderDetails, settings);
-    } else {
-      sendOrderConfirmationEmail(fullOrderDetails);
-    }
-
-    res.status(201).json({ msg: 'Order created successfully', order: newOrder });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
+// POST /api/orders (create an order directly) was removed: nothing used it, it could not
+// work (it referred to variables that don't exist) and it copied the request into the order.
+// Orders are created by POST /api/payment/initiate, with prices calculated by the server.
 
 // @route   POST api/orders/archive
 // @desc    Run the auto-archive process for old orders
 // @access  Private
-router.post('/archive', auth, async (req, res) => {
+router.post('/archive', auth, requireStaff, async (req, res) => {
     try {
         const settings = await Setting.findOne();
         if (!settings || !settings.archiveOrdersDays) {
@@ -243,7 +202,7 @@ router.post('/archive', auth, async (req, res) => {
 // @route   PUT api/orders/:id
 // @desc    Update an order's details and/or status securely
 // @access  Private
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -304,8 +263,19 @@ router.put('/:id/status', auth, async (req, res) => {
   try {
     const { status, comment } = req.body;
 
-    if (!status) {
+    if (!status || typeof status !== 'string') {
       return res.status(400).json({ msg: 'New status is required.' });
+    }
+
+    // Admins may change any order. A customer may only cancel their own order,
+    // and only while it is still waiting for payment.
+    const role = await currentRole(req);
+    if (role !== 'admin') {
+      const order = await Order.findById(req.params.id).select('user status');
+      const ownsIt = order && order.user && order.user.toString() === req.user.id;
+      if (!ownsIt || status !== 'cancelled' || order.status !== 'pending payment') {
+        return res.status(403).json({ msg: 'You can only cancel your own order while it is waiting for payment.' });
+      }
     }
 
     const updatedOrder = await changeOrderStatus(
@@ -330,7 +300,7 @@ router.put('/:id/status', auth, async (req, res) => {
 // @route   GET /api/orders/:id/picklist
 // @desc    Securely serves the picklist PDF for a single order
 // @access  Protected (Admin)
-router.get('/:id/picklist', auth, async (req, res) => {
+router.get('/:id/picklist', auth, requireStaff, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
@@ -338,7 +308,7 @@ router.get('/:id/picklist', auth, async (req, res) => {
       return res.status(404).json({ msg: 'Picklist not found for this order.' });
     }
 
-    const filePath = path.join(__dirname, '..', 'storage', 'picklists', order.picklistFilename);
+    const filePath = path.join(PICKLIST_DIR, path.basename(order.picklistFilename));
 
     if (fs.existsSync(filePath)) {
       // --- UPDATED: More robust file streaming method ---
@@ -366,7 +336,7 @@ router.get('/:id/picklist', auth, async (req, res) => {
 // @route   POST /api/orders/:id/generate-picklist
 // @desc    Manually generates a picklist for an order
 // @access  Protected (Admin)
-router.post('/:id/generate-picklist', auth, async (req, res) => {
+router.post('/:id/generate-picklist', auth, requireStaff, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate('items.productId');
     if (!order) {
@@ -387,4 +357,4 @@ router.post('/:id/generate-picklist', auth, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
-module.exports = router;
+module.exports = router;

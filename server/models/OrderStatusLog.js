@@ -9,4 +9,4 @@ const orderStatusLogSchema = new mongoose.Schema({
   comment:      { type: String }, 
 }, { timestamps: true });
 
-module.exports = mongoose.model('OrderStatusLog', orderStatusLogSchema);
+module.exports = mongoose.model('OrderStatusLog', orderStatusLogSchema);

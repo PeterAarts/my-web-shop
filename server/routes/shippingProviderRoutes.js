@@ -4,11 +4,12 @@ const express = require('express');
 const router = express.Router();
 const ShippingProvider = require('../models/ShippingProvider');
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 
 // @route   GET api/shipping-providers
 // @desc    Get all shipping providers for the admin panel
 // @access  Private/Admin
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireAdmin, async (req, res) => {
   try {
     const providers = await ShippingProvider.find();
     res.json(providers);
@@ -27,7 +28,7 @@ router.get('/', auth, async (req, res) => {
 // @route   PUT api/shipping-providers/:id
 // @desc    Update a shipping provider's details
 // @access  Private/Admin
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   try {
     // Use the entire request body for the update, as it's controlled by the admin panel.
     // Mongoose will only update the fields that are present in the model.

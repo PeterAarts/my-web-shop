@@ -9,18 +9,32 @@ const User = require('../models/User');
 const Setting = require('../models/Setting');
 // UPDATED: Import the new service functions
 const { sendRegistrationEmail, sendPasswordResetEmail } = require('../services/templateEmailService');
+const rateLimit = require('../middleware/rateLimit');
+const { text, passwordProblem, isEmail } = require('../lib/validate');
+
+// Limits per IP address: logins 10 per 15 minutes; registrations and reset mails 5 per hour
+const loginLimit = rateLimit({ name: 'login', max: 10, windowMs: 15 * 60 * 1000 });
+const accountLimit = rateLimit({ name: 'account', max: 5, windowMs: 60 * 60 * 1000 });
 
 // @route   POST /api/auth/register
 // @desc    Register a new user for the public shop
 // @access  Public (conditional)
-router.post('/register', async (req, res) => {
+router.post('/register', accountLimit, async (req, res) => {
     try {
         const settings = await Setting.getSingleton();
         if (!settings.allowShopRegistration) {
             return res.status(403).json({ msg: 'Sorry, user registration is currently disabled.' });
         }
 
-        const { username, email, password, newsletterSubscribed } = req.body;
+        const username = text(req.body.username, 50);
+        const email = isEmail(req.body.email) ? req.body.email.trim().toLowerCase() : null;
+        const password = req.body.password;
+        const newsletterSubscribed = req.body.newsletterSubscribed === true;
+        if (!username || !email) {
+            return res.status(400).json({ msg: 'Please fill in a username and a valid email address.' });
+        }
+        const pwProblem = passwordProblem(password);
+        if (pwProblem) return res.status(400).json({ msg: pwProblem });
 
         let userByEmail = await User.findOne({ email });
         if (userByEmail) {
@@ -31,7 +45,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ msg: 'This username is already taken.' });
         }
 
-        user = new User({
+        const user = new User({
             username,
             email,
             password,
@@ -55,9 +69,11 @@ router.post('/register', async (req, res) => {
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token (for ADMIN SITE ONLY)
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimit, async (req, res) => {
     // This route expects a USERNAME, not an email.
-    const { username, password } = req.body;
+    const username = text(req.body.username, 100);
+    const password = text(req.body.password, 200);
+    if (!username || !password) return res.status(400).json({ msg: 'Invalid credentials' });
     try {
         const user = await User.findOne({ username }).select('+password');
         if (!user) {
@@ -102,9 +118,11 @@ router.post('/login', async (req, res) => {
 // @route   POST /api/auth/shop-login
 // @desc    Authenticate a shop customer & get token
 // @access  Public
-router.post('/shop-login', async (req, res) => {
+router.post('/shop-login', loginLimit, async (req, res) => {
     // This route correctly expects an EMAIL and password.
-    const { email, password } = req.body;
+    const email = text(req.body.email, 254)?.trim().toLowerCase();
+    const password = text(req.body.password, 200);
+    if (!email || !password) return res.status(400).json({ msg: 'Invalid credentials' });
     try {
         // Find the user by their email address
         const user = await User.findOne({ email }).select('+password');
@@ -172,9 +190,10 @@ router.get('/verify-email/:token', async (req, res) => {
 });
 
 // @route   POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', accountLimit, async (req, res) => {
     try {
-        const user = await User.findOne({ email: req.body.email });
+        const email = text(req.body.email, 254)?.trim().toLowerCase();
+        const user = email ? await User.findOne({ email }) : null;
         if (!user) {
             return res.json({ msg: 'If a user with that email exists, a password reset link has been sent.' });
         }
@@ -194,7 +213,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // @route   POST /api/auth/reset-password/:token
-router.post('/reset-password/:token', async (req, res) => {
+router.post('/reset-password/:token', loginLimit, async (req, res) => {
     try {
         const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
         const user = await User.findOne({
@@ -206,6 +225,8 @@ router.post('/reset-password/:token', async (req, res) => {
             return res.status(400).json({ msg: 'Invalid or expired password reset token.' });
         }
 
+        const pwProblem = passwordProblem(req.body.password);
+        if (pwProblem) return res.status(400).json({ msg: pwProblem });
         user.password = req.body.password;
         user.passwordResetToken = undefined;
         user.passwordResetExpires = undefined;
@@ -218,4 +239,4 @@ router.post('/reset-password/:token', async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = router;

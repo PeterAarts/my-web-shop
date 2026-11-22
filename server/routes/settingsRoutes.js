@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const Setting = require('../models/Setting');
 
 // GET route remains the same...
@@ -23,7 +24,7 @@ router.get('/', async (req, res) => {
 // @route   PUT /api/settings
 // @desc    Update settings and return a success message
 // @access  Private
-router.put('/', auth, async (req, res) => {
+router.put('/', auth, requireAdmin, async (req, res) => {
   try {
     const settingsFields = req.body;
     delete settingsFields._id; // Prevent trying to update the immutable _id

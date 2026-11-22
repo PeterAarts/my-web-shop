@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const Product = require('../models/Product');
 const Setting = require('../models/Setting'); // Import the Setting model
 
@@ -63,7 +64,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST api/products
 // @desc    Create a new product
 // @access  Private
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   try {
     const productData = req.body;
     // 1. Fetch the settings to check for SKU generation mode
@@ -96,7 +97,7 @@ router.post('/', auth, async (req, res) => {
 // @route   PUT api/products/:id
 // @desc    Update a product
 // @access  Private
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   const {
     name, description, price, stockQuantity, stockLimit, category,
     tags, weight, dimensions, images, expiresAt, active
@@ -134,7 +135,7 @@ router.put('/:id', auth, async (req, res) => {
 // @route   DELETE api/products/:id
 // @desc    Delete a product
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -152,7 +153,7 @@ router.delete('/:id', auth, async (req, res) => {
 // @route   PATCH api/products/:id/reserve
 // @desc    Reserve a specific quantity of a product
 // @access  Private (user must be logged in)
-router.patch('/:id/reserve', auth, async (req, res) => {
+router.patch('/:id/reserve', auth, requireAdmin, async (req, res) => {
   const { quantity } = req.body;
   const quantityToReserve = Number(quantity);
 
@@ -195,7 +196,7 @@ router.patch('/:id/reserve', auth, async (req, res) => {
 // @route   PATCH api/products/:id/release
 // @desc    Release a specific quantity of a product (add it back to stock)
 // @access  Private
-router.patch('/:id/release', auth, async (req, res) => {
+router.patch('/:id/release', auth, requireAdmin, async (req, res) => {
   const { quantity } = req.body;
   const quantityToRelease = Number(quantity);
 

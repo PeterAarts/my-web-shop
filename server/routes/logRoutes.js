@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const OrderStatusLog = require('../models/OrderStatusLog');
 const EmailLog = require('../models/EmailStatusLog');
 
 // @route   GET api/logs/:orderId
 // @desc    Get a combined history of status and email logs for an order
 // @access  Admin
-router.get('/:orderId', auth, async (req, res) => {
+router.get('/:orderId', auth, requireStaff, async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -34,4 +35,4 @@ router.get('/:orderId', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router;

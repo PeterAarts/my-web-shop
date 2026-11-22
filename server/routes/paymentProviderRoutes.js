@@ -4,11 +4,12 @@ const express = require('express');
 const router = express.Router();
 const PaymentProvider = require('../models/PaymentProvider');
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 
 // @route   GET api/payment-providers
 // @desc    Get all payment providers for the admin panel
 // @access  Private/Admin
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireAdmin, async (req, res) => {
   try {
     const providers = await PaymentProvider.find().sort({ isOnline: -1, name: 1 });
     res.json(providers);
@@ -20,7 +21,7 @@ router.get('/', auth, async (req, res) => {
 // @route   PUT api/payment-providers/:id
 // @desc    Update a payment provider's details
 // @access  Private/Admin
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
   // ADDED: requiresRegistration to the destructured body
   const { isEnabled, requiresRegistration, mode, credentials, instructions } = req.body;
 

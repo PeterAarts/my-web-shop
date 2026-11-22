@@ -2,22 +2,16 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Story = require('../models/StoryItem');
 const Order = require('../models/Order');
 
-// Middleware to check if the user is an admin or reviewer
-const adminAuth = (req, res, next) => {
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'reviewer')) {
-        return res.status(403).json({ msg: 'Access denied. Admins or Reviewers only.' });
-    }
-    next();
-};
 
 // @route   GET api/dashboard/stats
-router.get('/stats', auth, adminAuth, async (req, res) => {
+router.get('/stats', auth, requireStaff, async (req, res) => {
     try {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const sessionsCollection = mongoose.connection.collection('sessions');
@@ -48,7 +42,7 @@ router.get('/stats', auth, adminAuth, async (req, res) => {
 });
 
 // @route   GET api/dashboard/activity
-router.get('/activity', auth, adminAuth, async (req, res) => {
+router.get('/activity', auth, requireStaff, async (req, res) => {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -68,7 +62,7 @@ router.get('/activity', auth, adminAuth, async (req, res) => {
 });
 
 // @route   GET api/dashboard/recent-orders
-router.get('/recent-orders', auth, adminAuth, async (req, res) => {
+router.get('/recent-orders', auth, requireStaff, async (req, res) => {
     try {
         // UPDATED: Re-added .populate() now that the Order model supports it.
         const recentOrders = await Order.find()

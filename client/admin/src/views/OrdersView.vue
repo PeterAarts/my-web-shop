@@ -27,6 +27,7 @@
           @create-label="createLabelForOrder"
           @download-picklist="handleDownloadPickList"
           @generate-picklist="handleGeneratePickList" 
+          @view-label="handleViewLabel"
         />
       </div>
     </div>
@@ -70,9 +71,9 @@
                     </div>
                     <div class="col-md-3" v-if="orderForm.shippingDetails.labelUrl">
                         <label class="form-label">Shipping Label</label>
-                        <a :href="`${apiBaseUrl}${orderForm.shippingDetails.labelUrl}`" target="_blank" class="btn btn-outline-success w-100">
+                        <button type="button" @click="handleViewLabel(orderForm)" class="btn btn-outline-success w-100">
                             <i class="ph ph-printer me-2"></i>View Label
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -240,6 +241,31 @@ const selectOrderForEdit = async (order) => {
 
 const updateSelection = (newSelection) => {
   selectedOrders.value = newSelection;
+};
+
+// Opens the shipping label. Labels contain the customer's address, so the server only
+// hands them out with a login token; a plain link can't send one.
+const handleViewLabel = async (order) => {
+  const token = localStorage.getItem('authToken');
+  const fileName = (order.shippingDetails?.labelUrl || '').split('/').pop();
+  if (!token || !fileName) {
+    addNotification('This label cannot be opened. Please log in again.', 'failure');
+    return;
+  }
+  // Open the tab now (browsers block tabs opened after a wait), fill it when the PDF is in.
+  const tab = window.open('', '_blank');
+  try {
+    const response = await fetch(`${apiBaseUrl.value}/api/shipping/labels/${encodeURIComponent(fileName)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Could not load the shipping label.');
+    const url = window.URL.createObjectURL(await response.blob());
+    if (tab) tab.location.href = url; else window.location.href = url;
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    if (tab) tab.close();
+    addNotification(error.message, 'failure');
+  }
 };
 
 const handleDownloadPickList = async (order) => {

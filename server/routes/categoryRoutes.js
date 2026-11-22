@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 const Category = require('../models/Category');
 
 // @route   GET api/categories
@@ -20,7 +21,7 @@ router.get('/', async (req, res) => {
 // @route   POST api/categories
 // @desc    Create a new category
 // @access  Private
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   const { name, description } = req.body;
   try {
     let category = await Category.findOne({ name });
@@ -39,7 +40,7 @@ router.post('/', auth, async (req, res) => {
 // @route   POST api/categories/bulk
 // @desc    Create multiple new categories at once
 // @access  Private
-router.post('/bulk', auth, async (req, res) => {
+router.post('/bulk', auth, requireAdmin, async (req, res) => {
   const { names } = req.body;
 
   if (!names || !Array.isArray(names)) {
@@ -70,7 +71,7 @@ router.post('/bulk', auth, async (req, res) => {
 // @route   DELETE api/categories/:id
 // @desc    Delete a category
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
     let category = await Category.findById(req.params.id);
     if (!category) {

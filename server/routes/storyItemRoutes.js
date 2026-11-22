@@ -3,11 +3,12 @@ const express = require('express');
 const router = express.Router();
 const StoryItem = require('../models/StoryItem');
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 
 // @route   POST /api/stories
 // @desc    Create a new story item
 // @access  Protected
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireAdmin, async (req, res) => {
   try {
     const { title, content, image, displayLocations, startDate, endDate, isActive } = req.body;
 
@@ -69,7 +70,7 @@ router.get('/location/:locationSlug', async (req, res) => {
 // @route   PUT /api/stories/:id
 // @desc    Update a story item
 // @access  Protected
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requireAdmin, async (req, res) => {
     try {
         const { title, content, image, displayLocations, startDate, endDate, isActive } = req.body;
         
@@ -104,7 +105,7 @@ router.put('/:id', auth, async (req, res) => {
 // @route   DELETE /api/stories/:id
 // @desc    Delete a story item
 // @access  Protected
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireAdmin, async (req, res) => {
     try {
         const storyItem = await StoryItem.findById(req.params.id);
         if (!storyItem) {

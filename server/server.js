@@ -17,16 +17,40 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger.json'); 
 // --- END UPDATE ---
 
-// Session management packages
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const helmet = require('helmet');
+const { UPLOAD_DIR } = require('./lib/paths');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// --- Refuse to start with missing or weak secrets ---
+// A guessable JWT_SECRET lets anyone make their own admin login token.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  const msg = 'JWT_SECRET is missing or shorter than 32 characters.';
+  if (isProduction) { console.error(`FATAL: ${msg} Set a long random value in .env.`); process.exit(1); }
+  console.warn(`- WARNING: ${msg} Fine for development, never for production.`);
+}
 
 // --- Middleware ---
-app.use(cors());
-app.use(express.json());
+// Apache on the same machine passes on the visitor's address; trust only that.
+app.set('trust proxy', 'loopback');
+app.disable('x-powered-by');
+// Security headers. The page CSP is set by Apache for the shop and admin sites.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' } }));
+
+// CORS: only our own sites may call the API from a browser. On the server the shop and
+// admin call /api on their own address, so CORS isn't even needed there. In development
+// the Vite dev servers on localhost are allowed. Extra origins: CORS_ORIGINS in .env.
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, done) {
+    if (!origin || allowedOrigins.includes(origin)) return done(null, true);
+    if (!isProduction && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return done(null, true);
+    done(null, false);
+  },
+}));
+app.use(express.json({ limit: '1mb' }));
 
 // --- Request Logging Setup ---
 if (process.env.NODE_ENV === 'development') {
@@ -38,22 +62,12 @@ if (process.env.NODE_ENV === 'development') {
     { stream: accessLogStream }
   ));
 }
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Uploaded product images (UPLOAD_DIR in .env, see lib/paths.js), then other public files
+app.use('/uploads', express.static(UPLOAD_DIR, { dotfiles: 'deny' }));
+app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'deny' }));
 
-// --- Session Configuration ---
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: true,
-  store: MongoStore.create({ 
-    mongoUrl: process.env.MONGODB_URI,
-    collectionName: 'sessions'
-  }),
-  cookie: {
-    maxAge: 1000 * 60 * 60 // 1 hour
-  }
-}));
+// (Sessions were removed: nothing used them, and every visitor got one stored in MongoDB.
+//  Logins use the JWT token; guest carts use the X-Guest-Token header.)
 
 // --- Function to Ensure Default Admin User Exists ---
 const ensureAdminExists = async () => {
@@ -127,11 +141,26 @@ app.use('/api/email-templates', require('./routes/emailTemplateRoutes'));
 app.use('/api/logs', require('./routes/logRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 
-// --- UPDATED: SERVE THE API DOCUMENTATION FROM THE JSON FILE ---
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-// --- END UPDATE ---
+// API documentation: a full map of the API, so not public in production.
+// Turn it on with ENABLE_API_DOCS=true (e.g. temporarily on a LAN-only test server).
+if (!isProduction || process.env.ENABLE_API_DOCS === 'true') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+}
+
+// Unknown API paths: a clear 404 instead of the HTML error page
+app.use('/api', (req, res) => res.status(404).json({ msg: 'Not found' }));
+
+// Last resort: never send error details (stack traces, paths) to the browser
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') return res.status(413).json({ msg: 'Request too large.' });
+  if (err && err.type === 'entity.parse.failed') return res.status(400).json({ msg: 'Invalid JSON.' });
+  console.error('Unhandled error:', err);
+  res.status(500).json({ msg: 'Server Error' });
+});
 
 // --- Start the Server ---
-app.listen(PORT, () => {
-  console.log(` - Server is running on port ${PORT}`);
+// Listen on this machine only (HOST in .env); Apache is the way in from outside.
+const HOST = process.env.HOST || '127.0.0.1';
+app.listen(PORT, HOST, () => {
+  console.log(` - Server is running on ${HOST}:${PORT}`);
 });

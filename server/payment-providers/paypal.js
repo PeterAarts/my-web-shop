@@ -1,5 +1,6 @@
 // FILE: server/payment-providers/paypal.js
-const fetch = require('node-fetch');
+// Node 18+ has fetch built in. (node-fetch v3 can't be loaded with require().)
+const fetch = globalThis.fetch;
 
 // --- Helper Functions ---
 
@@ -127,4 +128,4 @@ module.exports = {
   createOrder,
   captureOrder,
   initiate, // <-- Add this
-};
+};

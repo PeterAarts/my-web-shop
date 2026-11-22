@@ -1,19 +1,14 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
+// Checks that the request comes from a logged-in user (customer, reviewer or admin).
+// It does NOT check the role: add requireAdmin or requireStaff for that.
+//
+// The token is only accepted from the Authorization header. Tokens in the address
+// (?token=...) end up in browser history and server logs, so they are not accepted.
 module.exports = function(req, res, next) {
-  let token;
+  const header = req.header('Authorization');
+  const token = header && header.startsWith('Bearer ') ? header.slice(7) : null;
 
-  // 1. Check for token in the Authorization header
-  if (req.header('Authorization') && req.header('Authorization').startsWith('Bearer ')) {
-    token = req.header('Authorization').split(' ')[1];
-  } 
-  // 2. NEW: If no header, check for token in the query parameters
-  else if (req.query.token) {
-    token = req.query.token;
-  }
-
-  // If no token is found in either location, deny access
   if (!token) {
     return res.status(401).json({ msg: 'No token, authorization denied' });
   }

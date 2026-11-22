@@ -6,11 +6,10 @@ const fs = require('fs');
 const sharp = require('sharp');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { requireAdmin, requireStaff } = require('../middleware/requireRole');
 
-const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Where images are stored: UPLOAD_DIR in .env (see lib/paths.js); served at /uploads
+const { UPLOAD_DIR: uploadsDir } = require('../lib/paths');
 
 function checkFileType(file, cb) {
   const filetypes = /jpeg|jpg|png|gif|webp/;
@@ -32,7 +31,7 @@ const upload = multer({
   }
 }).single('productImage');
 
-router.post('/', auth, (req, res) => {
+router.post('/', auth, requireAdmin, (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ msg: err });
@@ -83,4 +82,4 @@ router.post('/', auth, (req, res) => {
   });
 });
 
-module.exports = router;
+module.exports = router;

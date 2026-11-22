@@ -50,13 +50,13 @@
                 title="Create Shipping Label">
                 <i class="ph ph-barcode"></i>
               </button>
-              <a v-if="order.shippingDetails && order.shippingDetails.labelUrl"
-                :href="order.shippingDetails.labelUrl"
-                target="_blank"
+              <button v-if="order.shippingDetails && order.shippingDetails.labelUrl"
+                type="button"
+                @click.stop="$emit('view-label', order)"
                 class="btn "
                 title="View Shipping Label">
                 <i class="ph ph-printer"></i>
-              </a>
+              </button>
             </td>
             <td class="text-center">
               <!-- Show DOWNLOAD icon if picklist exists -->
@@ -125,7 +125,8 @@ const emit = defineEmits([
     'selection-changed', 
     'create-label', 
     'download-picklist',
-    'generate-picklist' // NEW: Add the new event
+    'generate-picklist', // NEW: Add the new event
+    'view-label'
 ]);
 
 const searchTerm = ref('');
